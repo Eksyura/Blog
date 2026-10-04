@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>个人博客 · 毛玻璃虚化</title>
+    <title>The blog of Eksyura</title>
     <style>
         * {
             margin: 0;
@@ -17,13 +17,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
             padding: 20px;
-            overflow-x: hidden;
+            position: relative;
             background: #b8c9e0;
+            overflow-x: hidden;
         }
 
-        /* ============ 背景视频层 ============ */
+        /* ===== 无缝循环背景：两层 video 叠加 ===== */
         .bg-video {
             position: fixed;
             top: 0;
@@ -35,9 +35,15 @@
             pointer-events: none;
             filter: blur(6px) brightness(1.05) saturate(1.15);
             transform: scale(1.05);
+            opacity: 0;
+            transition: opacity 0.15s linear;
         }
 
-        /* 视频上方的色调遮罩 */
+        .bg-video.active {
+            opacity: 1;
+        }
+
+        /* 色调遮罩 */
         .bg-overlay {
             position: fixed;
             top: 0;
@@ -53,23 +59,48 @@
             );
         }
 
-        .blog-wrapper {
+        /* ---------- 主布局：左边一列，右边一列，中间空档偏右 ---------- */
+        .blog-layout {
             width: 100%;
             max-width: 1200px;
-            margin: 0 auto;
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 24px;
+            grid-template-columns: 1.6fr 0.2fr 1fr;
+            gap: 0;
+            align-items: start;
         }
 
+        /* 左列：包含三个卡片 */
+        .column-left {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            grid-column: 1;
+        }
+
+        /* 中间空档列（不需要内容，仅占位） */
+        .spacer {
+            grid-column: 2;
+        }
+
+        /* 右列：包含三个卡片 */
+        .column-right {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            grid-column: 3;
+        }
+
+        /* 毛玻璃卡片 */
         .glass-card {
             background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(16px) saturate(180%);
             -webkit-backdrop-filter: blur(16px) saturate(180%);
-            border-radius: 32px;
+            border-radius: 28px;
             border: 1px solid rgba(255, 255, 255, 0.5);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(255, 255, 255, 0.3) inset;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            padding: 24px 22px;
+            color: #1e2b3c;
         }
 
         .glass-card:hover {
@@ -77,355 +108,201 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 30px rgba(255, 255, 255, 0.5) inset;
         }
 
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .header-card {
-            padding: 32px 32px 28px;
-            text-align: left;
-        }
-
-        .header-card h1 {
-            font-size: 2.8rem;
+        /* 卡片内部排版 */
+        .glass-card h2 {
+            font-size: 1.8rem;
             font-weight: 600;
+            margin-bottom: 12px;
             letter-spacing: -0.02em;
-            color: #1e2b3c;
-            margin-bottom: 8px;
-            text-shadow: 0 2px 4px rgba(255, 255, 255, 0.5);
+            color: #1a2632;
+            text-shadow: 0 1px 4px rgba(255,255,255,0.5);
         }
 
-        .header-card .subhead {
-            font-size: 1.1rem;
-            color: #2c3e50;
-            opacity: 0.9;
-            font-weight: 400;
-            margin-bottom: 16px;
+        .glass-card h3 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: #1e2b3c;
+        }
+
+        .glass-card p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #2e3c4b;
+            margin-bottom: 10px;
+        }
+
+        .glass-card ul {
+            list-style: none;
+            margin-top: 6px;
+        }
+
+        .glass-card ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            font-size: 0.95rem;
+            color: #1e2b3c;
+        }
+
+        .glass-card ul li:last-child {
+            border-bottom: none;
+        }
+
+        .tag-cloud {
             display: flex;
-            align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
         }
 
-        .header-card .subhead span {
-            background: rgba(255, 255, 255, 0.5);
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.9rem;
-            backdrop-filter: blur(4px);
-        }
-
-        .post-card {
-            padding: 28px 30px;
-        }
-
-        .post-card .post-meta {
-            display: flex;
-            gap: 20px;
-            font-size: 0.9rem;
-            color: #3a4a5a;
-            margin-bottom: 14px;
-            opacity: 0.8;
-        }
-
-        .post-card h2 {
-            font-size: 1.8rem;
-            font-weight: 500;
-            color: #1a2632;
-            margin-bottom: 12px;
-            letter-spacing: -0.01em;
-        }
-
-        .post-card p {
-            color: #2e3c4b;
-            line-height: 1.6;
-            margin-bottom: 20px;
-            font-weight: 400;
-        }
-
-        .post-card .read-more {
-            display: inline-block;
-            padding: 10px 22px;
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(8px);
-            border-radius: 40px;
-            text-decoration: none;
-            color: #1e2b3c;
-            font-weight: 500;
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            transition: all 0.25s ease;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
-            font-size: 0.95rem;
-        }
-
-        .post-card .read-more:hover {
-            background: rgba(255, 255, 255, 0.8);
-            border-color: white;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-            transform: scale(1.02);
-        }
-
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .profile-card {
-            padding: 28px 22px;
-            text-align: center;
-        }
-
-        .avatar {
-            width: 100px;
-            height: 100px;
-            margin: 0 auto 16px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(8px);
-            border: 2px solid rgba(255, 255, 255, 0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3.2rem;
-            font-weight: 300;
-            color: #2c3e50;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-        }
-
-        .profile-card h3 {
-            font-size: 1.6rem;
-            font-weight: 500;
-            color: #1a2632;
-            margin-bottom: 6px;
-        }
-
-        .profile-card .bio {
-            font-size: 0.95rem;
-            color: #2f4050;
-            margin-bottom: 18px;
-            opacity: 0.9;
-            line-height: 1.5;
-        }
-
-        .social-links {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-        }
-
-        .social-links a {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 42px;
-            height: 42px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.4);
-            backdrop-filter: blur(6px);
-            color: #1e2b3c;
-            text-decoration: none;
-            font-size: 1.2rem;
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            transition: all 0.2s ease;
-        }
-
-        .social-links a:hover {
-            background: rgba(255, 255, 255, 0.8);
-            transform: translateY(-3px);
-        }
-
-        .tags-card {
-            padding: 22px 22px;
-        }
-
-        .tags-card h4 {
-            font-size: 1.2rem;
-            font-weight: 500;
-            color: #1a2632;
-            margin-bottom: 16px;
-            letter-spacing: -0.01em;
-        }
-
-        .tag-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .tag-list span {
-            padding: 6px 16px;
+        .tag-cloud span {
+            padding: 5px 14px;
             background: rgba(255, 255, 255, 0.35);
             backdrop-filter: blur(4px);
             border-radius: 40px;
-            font-size: 0.9rem;
-            color: #1e2b3c;
+            font-size: 0.85rem;
             border: 1px solid rgba(255, 255, 255, 0.5);
             transition: all 0.2s ease;
             cursor: default;
         }
 
-        .tag-list span:hover {
+        .tag-cloud span:hover {
             background: rgba(255, 255, 255, 0.7);
             border-color: white;
         }
 
-        .recent-card {
-            padding: 22px;
-        }
-
-        .recent-card h4 {
-            font-size: 1.2rem;
-            font-weight: 500;
-            color: #1a2632;
-            margin-bottom: 18px;
-        }
-
-        .recent-item {
-            display: flex;
-            flex-direction: column;
-            padding: 12px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .recent-item:last-child {
-            border-bottom: none;
-        }
-
-        .recent-item a {
-            text-decoration: none;
-            color: #1e2b3c;
-            font-weight: 500;
-            font-size: 1rem;
-            margin-bottom: 4px;
-            transition: color 0.2s;
-        }
-
-        .recent-item a:hover {
-            color: #3a5f8b;
-        }
-
-        .recent-item .date {
-            font-size: 0.8rem;
-            color: #3f5567;
-            opacity: 0.7;
-        }
-
-        @media (max-width: 800px) {
-            .blog-wrapper {
+        /* ---------- 响应式：窄屏全部单列 ---------- */
+        @media (max-width: 900px) {
+            .blog-layout {
                 grid-template-columns: 1fr;
+                max-width: 600px;
+                margin: 0 auto;
                 gap: 20px;
             }
-            .header-card h1 { font-size: 2.2rem; }
-            body { padding: 16px; }
+            .spacer {
+                display: none;
+            }
+            .column-left,
+            .column-right {
+                grid-column: auto;
+            }
         }
 
         @media (max-width: 480px) {
-            .header-card { padding: 24px 20px; }
-            .post-card { padding: 22px 20px; }
-            .header-card h1 { font-size: 1.9rem; }
-            .post-card h2 { font-size: 1.5rem; }
+            .glass-card {
+                padding: 20px 16px;
+            }
+            .glass-card h2 {
+                font-size: 1.5rem;
+            }
+            .glass-card h3 {
+                font-size: 1.15rem;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- ============ 背景视频 ============ -->
-    <video class="bg-video" autoplay muted loop playsinline preload="auto">
+    <!-- ===== 无缝循环背景：两个 video 交替播放 ===== -->
+    <video class="bg-video active" autoplay muted playsinline preload="auto">
         <source src="./backgroundgirl.mp4" type="video/mp4">
-        您的浏览器不支持 HTML5 视频背景。
+    </video>
+    <video class="bg-video" autoplay muted playsinline preload="auto">
+        <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
 
-    <!-- 视频上方的色调遮罩 -->
     <div class="bg-overlay"></div>
 
-    <div class="blog-wrapper">
-        <main class="main-content">
-            <header class="glass-card header-card">
-                <h1>静水·流深</h1>
-                <div class="subhead">
-                    记录思考与灵感
-                    <span>✨ 毛玻璃</span>
-                </div>
-                <p style="color: #2a3b4c; font-size: 1rem; line-height: 1.6; max-width: 85%;">
-                    欢迎来到我的数字花园。这里存放着关于设计、技术和生活的片段。背景虚化，心情透明。
-                </p>
-            </header>
+    <!-- 双列布局 -->
+    <div class="blog-layout">
+        <!-- 左列：三个卡片 -->
+        <div class="column-left">
+            <!-- 卡片1：个人资料 -->
+            <div class="glass-card">
+                <h2>Eksyura</h2>
+                <p>I don't know what can be but here</p>
+                <p style="font-size:0.9rem; opacity:0.8; margin-top:8px;">INTP / INFP</p>
+            </div>
 
-            <article class="glass-card post-card">
-                <div class="post-meta">
-                    <span>📅 2025.03.12</span>
-                    <span># 设计</span>
-                </div>
-                <h2>在界面中营造毛玻璃与深度</h2>
-                <p>
-                    毛玻璃（Glassmorphism）不仅仅是一种视觉风格，更是一种对空间层次的探索。通过背景模糊、半透明和细微的边框，
-                    能够创造出轻盈、通透且富有现代感的界面。本文分享如何平衡模糊半径、透明度和光照，让卡片自然融入背景……
-                </p>
-                <a href="#" class="read-more">继续阅读  →</a>
-            </article>
+            <!-- 卡片2：诗歌 -->
+            <div class="glass-card">
+                <h3>New Poem</h3>
+                <ul>
+                    <li>GOVERN VERN MAN</li>
+                    <li>MAN DESTRIPU SPIROF</li>
+                    <li>IMAGINE EXO</li>
+                    <li>DO ESCA TRUE HOME</li>
+                </ul>
+            </div>
 
-            <article class="glass-card post-card">
-                <div class="post-meta">
-                    <span>📅 2025.03.05</span>
-                    <span># 随想</span>
-                </div>
-                <h2>虚化背景，聚焦当下</h2>
-                <p>
-                    摄影中的大光圈虚化能突出主体，而界面设计中的背景虚化同样能引导视线。去除嘈杂，留下最需要被关注的内容。
-                    这篇文章聊聊如何利用 backdrop-filter 和渐变光斑，让背景成为情绪的延伸，而不是干扰……
-                </p>
-                <a href="#" class="read-more">继续阅读  →</a>
-            </article>
-        </main>
+            <!-- 卡片3：程序下载 -->
+            <div class="glass-card">
+                <h3>download my program</h3>
+                <p>I don't know what can be put here.</p>
+            </div>
+        </div>
 
-        <aside class="sidebar">
-            <div class="glass-card profile-card">
-                <div class="avatar">🌊</div>
-                <h3>林一</h3>
-                <div class="bio">独立开发者 / 设计爱好者<br>喜欢模糊边界的事物</div>
-                <div class="social-links">
-                    <a href="#" aria-label="GitHub">🐙</a>
-                    <a href="#" aria-label="Twitter">🐦</a>
-                    <a href="#" aria-label="Email">✉️</a>
+        <!-- 中间空档列（仅占位，无内容） -->
+        <div class="spacer"></div>
+
+        <!-- 右列：三个卡片 -->
+        <div class="column-right">
+            <!-- 卡片1：关于我 -->
+            <div class="glass-card">
+                <h3>ABOUT ME</h3>
+                <div class="tag-cloud">
+                    <span>INTP</span>
+                    <span>PHIGROS</span>
+                    <span>MINECRAFT</span>
+                    <span>ANIME LOVER</span>
+                    <span>FUCKER</span>
+                    <span>???</span>
                 </div>
             </div>
 
-            <div class="glass-card tags-card">
-                <h4>探索标签</h4>
-                <div class="tag-list">
-                    <span>设计</span>
-                    <span>毛玻璃</span>
-                    <span>前端</span>
-                    <span>UI/UX</span>
-                    <span>虚化</span>
-                    <span>随笔</span>
-                    <span>灵感</span>
-                </div>
+            <!-- 卡片2：新闻 -->
+            <div class="glass-card">
+                <h3>NEWS</h3>
+                <ul>
+                    <li>震惊！蚊子叮了我</li>
+                    <li>震惊！我是人！</li>
+                    <li>震惊！这句话令人震惊！</li>
+                </ul>
             </div>
 
-            <div class="glass-card recent-card">
-                <h4>最近文章</h4>
-                <div class="recent-item">
-                    <a href="#">CSS backdrop-filter 指南</a>
-                    <span class="date">2025.02.28</span>
-                </div>
-                <div class="recent-item">
-                    <a href="#">打造通透的卡片组件</a>
-                    <span class="date">2025.02.15</span>
-                </div>
-                <div class="recent-item">
-                    <a href="#">背景虚化的艺术</a>
-                    <span class="date">2025.01.30</span>
-                </div>
+            <!-- 卡片3：联系方式 -->
+            <div class="glass-card">
+                <h3>contact with me</h3>
+                <p style="margin-bottom:6px;">Wechat</p>
+                <p style="margin-bottom:6px;">Ding me as well</p>
             </div>
-        </aside>
+        </div>
     </div>
 
-    <div style="position: fixed; bottom: 10px; left: 0; width: 100%; text-align: center; pointer-events: none; z-index: 10;">
-        <span style="background: rgba(255,255,255,0.2); backdrop-filter: blur(8px); padding: 6px 18px; border-radius: 40px; font-size: 0.8rem; color: #2c3e50; border: 1px solid rgba(255,255,255,0.4);">
-            © 2025 静水流深 · 毛玻璃博客
-        </span>
-    </div>
+    <!-- ===== 无缝循环控制脚本 ===== -->
+    <script>
+        (function () {
+            const videos = document.querySelectorAll('.bg-video');
+            const DURATION = 8000; // 每段视频播放时长（毫秒）
+                                   // ⚠️ 改成你视频实际时长的 90% 左右
+
+            let current = 0;
+
+            videos.forEach(v => {
+                v.currentTime = 0;
+                v.play().catch(() => {});
+            });
+
+            setInterval(() => {
+                const next = 1 - current;
+
+                videos[next].currentTime = 0;
+                videos[next].play().catch(() => {});
+
+                videos[current].classList.remove('active');
+                videos[next].classList.add('active');
+
+                current = next;
+            }, DURATION);
+        })();
+    </script>
 </body>
 </html>
