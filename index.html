@@ -148,6 +148,72 @@
             border-bottom: none;
         }
 
+        /* ---------- 程序下载卡片 ---------- */
+        .download-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.28);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin-top: 10px;
+        }
+
+        .download-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 0;
+        }
+
+        .download-name {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #1a2632;
+            word-break: break-all;
+        }
+
+        .download-sub {
+            font-size: 0.78rem;
+            color: #46586c;
+        }
+
+        .download-btn {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border-radius: 40px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #fff;
+            text-decoration: none;
+            background: linear-gradient(135deg, #4a7fd4 0%, #3563b0 100%);
+            box-shadow: 0 4px 14px rgba(53, 99, 176, 0.35);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.08);
+            box-shadow: 0 8px 20px rgba(53, 99, 176, 0.45);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
+
+        .download-note {
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: #46586c;
+            margin-top: 10px;
+        }
+
         .tag-cloud {
             display: flex;
             flex-wrap: wrap;
@@ -236,7 +302,14 @@
             <!-- 卡片3：程序下载 -->
             <div class="glass-card">
                 <h3>download my program</h3>
-                <p>I don't know what can be put here.</p>
+                <div class="download-item">
+                    <div class="download-meta">
+                        <span class="download-name">performance_test</span>
+                        <span class="download-sub">v1.0.1 · Windows 64-bit · 46.7 MB</span>
+                    </div>
+                    <a class="download-btn" href="./downloads/performance_test_v1.0.1.exe" download="performance_test_v1.0.1.exe">Download</a>
+                </div>
+                <p class="download-note">If the download doesn't start, right-click the button and choose "Save link as…".</p>
             </div>
         </div>
 
