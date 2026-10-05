@@ -95,7 +95,9 @@
             overscroll-behavior-y: none;
         }
 
-        /* 柔和色调遮罩：蓝味压到最低，换成中性的暖灰 */
+        /* 柔和的色调遮罩：蓝味压到最低的中性暖灰。
+           整体压得比原来浅，左上（卡片所在区域）留得更亮 —— 背景太暗的话，
+           卡片虽然半透明，透上来的也只有一片灰，看不到颜色和明暗。 */
         .bg-overlay {
             position: fixed;
             top: 0;
@@ -106,8 +108,8 @@
             pointer-events: none;
             background: linear-gradient(
                 145deg,
-                rgba(52, 58, 70, 0.20) 0%,
-                rgba(28, 32, 40, 0.40) 100%
+                rgba(48, 54, 66, 0.10) 0%,
+                rgba(24, 28, 36, 0.26) 100%
             );
         }
 
@@ -144,15 +146,16 @@
 
         /* 毛玻璃卡片 */
         .glass-card {
-            /* 白色毛玻璃：0.68 是"看着白"和"透出虚化背景"之间的平衡点。
-               再往 0.9 调就变实心白、毛玻璃感会消失；往 0.5 调背景色就会染上来。 */
-            background: rgba(255, 255, 255, 0.68);
-            backdrop-filter: blur(22px) saturate(145%);
-            -webkit-backdrop-filter: blur(22px) saturate(145%);
+            /* 毛玻璃：背景"透不透得上来"取决于这个 alpha。
+               0.85 以上 = 实心白板；0.5 左右才能看见背景的颜色和明暗。
+               注意 alpha 只加在背景色上，文字仍然是全不透明，所以发虚的只有背景。 */
+            background: rgba(255, 255, 255, 0.52);
+            backdrop-filter: blur(12px) saturate(150%);
+            -webkit-backdrop-filter: blur(12px) saturate(150%);
             border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.7);
-            box-shadow: 0 10px 34px rgba(16, 24, 40, 0.18),
-                        0 1px 0 rgba(255, 255, 255, 0.6) inset;
+            border: 1px solid rgba(255, 255, 255, 0.65);
+            box-shadow: 0 10px 34px rgba(16, 24, 40, 0.16),
+                        0 1px 0 rgba(255, 255, 255, 0.5) inset;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             padding: 24px 22px;
             color: #1e2b3c;
@@ -160,7 +163,7 @@
 
         .glass-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 30px rgba(255, 255, 255, 0.5) inset;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 30px rgba(255, 255, 255, 0.35) inset;
         }
 
         /* 卡片内部排版 */
