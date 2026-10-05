@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The blog of Eksyura</title>
+    <!-- 设备判断必须在 CSS 之前跑，否则手机会先闪一下视频 -->
+    <script>
+        (function () {
+            var ua = navigator.userAgent || '';
+            var isMobile = /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua) ||
+                           (navigator.maxTouchPoints > 1 && /Mac/i.test(ua));
+            if (isMobile) {
+                document.documentElement.classList.add('is-mobile');
+            }
+        })();
+    </script>
     <style>
         * {
             margin: 0;
@@ -13,18 +24,29 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            min-height: 100vh;
+            /* 手机地址栏伸缩会让 100vh 变化、内容跟着跳：用 svh/dvh + JS 兜底 */
+            --app-vh: 100vh;
+            min-height: var(--app-vh);
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
             position: relative;
             background: #b8c9e0;
-            overflow-x: hidden;
+            overflow-x: clip;
+            scrollbar-gutter: stable;
+            overscroll-behavior-y: none;
         }
 
-        /* ===== 无缝循环背景：两层 video 叠加 ===== */
-        .bg-video {
+        @supports (min-height: 100svh) {
+            body {
+                --app-vh: 100svh;
+            }
+        }
+
+        /* ===== 背景层：桌面用两层 video 交叉淡入，手机用一张静态图 ===== */
+        .bg-video,
+        .bg-still {
             position: fixed;
             top: 0;
             left: 0;
@@ -33,17 +55,41 @@
             object-fit: cover;
             z-index: -3;
             pointer-events: none;
-            filter: blur(6px) brightness(1.05) saturate(1.15);
-            transform: scale(1.05);
+        }
+
+        .bg-video {
             opacity: 0;
-            transition: opacity 0.15s linear;
+            /* 交叉淡入要够长才看不出来接缝 */
+            transition: opacity 700ms linear;
         }
 
         .bg-video.active {
             opacity: 1;
         }
 
-        /* 色调遮罩 */
+        .bg-still {
+            display: none;
+            background-image: url('./backgroundgirl.png');
+            background-size: cover;
+            background-position: center 22%;
+            background-repeat: no-repeat;
+        }
+
+        /* 手机：不加载也不播 4K 视频，只显示静态图 */
+        html.is-mobile .bg-video {
+            display: none;
+        }
+
+        html.is-mobile .bg-still {
+            display: block;
+        }
+
+        /* 滚动时背景不要跟着晃 */
+        html.is-mobile body {
+            overscroll-behavior-y: none;
+        }
+
+        /* 柔和色调遮罩：蓝味压到最低，换成中性的暖灰 */
         .bg-overlay {
             position: fixed;
             top: 0;
@@ -54,8 +100,8 @@
             pointer-events: none;
             background: linear-gradient(
                 145deg,
-                rgba(200, 217, 240, 0.35) 0%,
-                rgba(176, 196, 222, 0.45) 100%
+                rgba(52, 58, 70, 0.20) 0%,
+                rgba(28, 32, 40, 0.40) 100%
             );
         }
 
@@ -92,12 +138,14 @@
 
         /* 毛玻璃卡片 */
         .glass-card {
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(16px) saturate(180%);
-            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            /* 白色毛玻璃：不要把下面那层蓝色遮罩透上来 */
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(20px) saturate(130%);
+            -webkit-backdrop-filter: blur(20px) saturate(130%);
             border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05), 0 4px 20px rgba(255, 255, 255, 0.3) inset;
+            border: 1px solid rgba(255, 255, 255, 0.92);
+            box-shadow: 0 10px 34px rgba(16, 24, 40, 0.16),
+                        0 2px 10px rgba(255, 255, 255, 0.55) inset;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             padding: 24px 22px;
             color: #1e2b3c;
@@ -339,11 +387,14 @@
     </style>
 </head>
 <body>
-    <!-- ===== 无缝循环背景：两个 video 交替播放 ===== -->
-    <video class="bg-video active" autoplay muted playsinline preload="auto">
+    <!-- ===== 背景：手机用静态图，桌面用两个 video 交叉淡入 ===== -->
+    <div class="bg-still" aria-hidden="true"></div>
+
+    <!-- preload="none"：手机上完全不下载这 42 MB 的 4K 视频 -->
+    <video class="bg-video active" muted playsinline preload="none" aria-hidden="true">
         <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
-    <video class="bg-video" autoplay muted playsinline preload="auto">
+    <video class="bg-video" muted playsinline preload="none" aria-hidden="true">
         <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
 
@@ -434,35 +485,154 @@
         </div>
     </div>
 
-    <!-- ===== 无缝循环控制脚本 ===== -->
+    <!-- ===== 背景控制：桌面视频交叉淡入 / 手机静态图 / 消除 100vh 跳动 ===== -->
     <script>
         (function () {
-            const videos = document.querySelectorAll('.bg-video');
-            const DURATION = 8000; // 每段视频播放时长（毫秒）
-                                   // ⚠️ 改成你视频实际时长的 90% 左右
+            const html = document.documentElement;
+            const videos = Array.prototype.slice.call(document.querySelectorAll('.bg-video'));
 
-            let current = 0;
-
-            videos.forEach(v => {
-                v.currentTime = 0;
-                v.play().catch(() => {});
+            // ---------- 1. 视口高度：JS 兜底，配合 CSS 的 svh ----------
+            // 只在浏览器不支持 svh 时才自己算高度 —— 手机上地址栏收起/展开都会触发
+            // resize，跟着改高度正是"跳动"的来源，所以这里刻意不监听它。
+            let appVhPx = 0;
+            function usesSvh() {
+                // 用 window.CSS 而不是裸的 CSS：后者在缺少该全局变量的旧浏览器里
+                // 会直接抛 ReferenceError，把整个背景脚本带崩
+                return !!(window.CSS && window.CSS.supports &&
+                          window.CSS.supports('min-height', '100svh'));
+            }
+            function recordVh() {
+                if (usesSvh()) {
+                    return; // 交给 CSS 的 100svh，它本身不随地址栏变化
+                }
+                const h = window.innerHeight || 0;
+                if (h > appVhPx) {
+                    appVhPx = h;
+                    html.style.setProperty('--app-vh', h + 'px');
+                }
+            }
+            recordVh();
+            window.addEventListener('orientationchange', function () {
+                setTimeout(recordVh, 300);
             });
 
-            setInterval(() => {
-                const next = 1 - current;
+            // ---------- 2. 手机 → 静态图，不碰视频 ----------
+            function isMobileDevice() {
+                const ua = navigator.userAgent || '';
+                return /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua) ||
+                       (navigator.maxTouchPoints > 1 && /Mac/i.test(ua));
+            }
+            function prefersStill() {
+                return isMobileDevice() || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            }
 
-                videos[next].currentTime = 0;
-                videos[next].play().catch(() => {});
+            let loopTimer = null;
 
-                videos[current].classList.remove('active');
-                videos[next].classList.add('active');
+            function stopVideos() {
+                if (loopTimer) {
+                    clearTimeout(loopTimer);
+                    loopTimer = null;
+                }
+                videos.forEach(function (v) {
+                    v.pause();
+                    v.classList.remove('active');
+                });
+            }
 
-                current = next;
-            }, DURATION);
+            function setStill(on) {
+                html.classList.toggle('force-still', on);
+                if (on) {
+                    stopVideos();
+                } else {
+                    videos[0].classList.add('active');
+                    videos[0].play().catch(function () {});
+                    scheduleSwap();
+                }
+            }
+
+            // ---------- 3. 交叉淡入：按视频真实时长排程 ----------
+            // 原代码写死 8000ms，而这个视频实际 8.5s，所以每次都在尾部截断 → 接缝闪烁。
+            function durationOf(v) {
+                const d = v.duration;
+                return (isFinite(d) && d > 0.5) ? d : 8.5;
+            }
+
+            function startIndex() {
+                return videos[0].classList.contains('active') ? 0 : 1;
+            }
+
+            function scheduleSwap() {
+                if (loopTimer) {
+                    clearTimeout(loopTimer);
+                }
+                const cur = videos[startIndex()];
+                const wait = Math.max(600, (durationOf(cur) - 0.9) * 1000);
+                loopTimer = setTimeout(swap, wait);
+            }
+
+            function swap() {
+                const curIndex = videos[0].classList.contains('active') ? 0 : 1;
+                const nextIndex = 1 - curIndex;
+                const cur = videos[curIndex];
+                const next = videos[nextIndex];
+
+                // 关键：先让下一个从 0 帧柔和淡入，等淡完了再重置旧的。
+                // 绝不能把当前可见的视频重置回 0，那一下就是"闪烁"的来源。
+                next.currentTime = 0;
+                next.play().catch(function () {});
+                next.classList.add('active');
+                cur.classList.remove('active');
+
+                setTimeout(function () {
+                    cur.pause();
+                    cur.currentTime = 0;
+                }, 800);
+
+                scheduleSwap();
+            }
+
+            // 元数据到手后按真实时长排程；没拿到就先用默认值
+            videos.forEach(function (v) {
+                v.addEventListener('loadedmetadata', function () {
+                    if (!html.classList.contains('force-still')) {
+                        scheduleSwap();
+                    }
+                });
+                v.addEventListener('error', function () {
+                    // 视频挂了就退回静态图，别留一片空白
+                    html.classList.add('force-still');
+                });
+            });
+
+            // 首次播放在 DOM 就绪后（此刻 video 元素可能还没解析出来）
+            function boot() {
+                if (prefersStill()) {
+                    setStill(true);
+                    return;
+                }
+                videos[0].play().catch(function () {});
+                scheduleSwap();
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', boot);
+            } else {
+                boot();
+            }
+
+            // 旋屏 / 缩放时重新判断：手机横屏或桌面窗口变宽就放视频
+            window.addEventListener('resize', function () {
+                if (prefersStill()) {
+                    setStill(true);
+                } else if (html.classList.contains('force-still')) {
+                    setStill(false);
+                }
+            });
         })();
     </script>
     <!-- ===== 哲学家名句：每次进入随机展示一句 ===== -->
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
         (function () {
             var QUOTES = [
               {
@@ -881,6 +1051,7 @@
                 box.classList.remove('is-loading');
             });
         })();
+        });
     </script>
 </body>
 </html>
