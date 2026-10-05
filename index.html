@@ -214,6 +214,16 @@
             margin-top: 10px;
         }
 
+        .download-note code {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 0.74rem;
+            padding: 1px 5px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.55);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            word-break: break-all;
+        }
+
         .tag-cloud {
             display: flex;
             flex-wrap: wrap;
@@ -304,12 +314,17 @@
                 <h3>download my program</h3>
                 <div class="download-item">
                     <div class="download-meta">
-                        <span class="download-name">performance_test</span>
-                        <span class="download-sub">v1.0.1 · Windows 64-bit · 46.7 MB</span>
+                        <span class="download-name">performance_test_v1.0.1.zip</span>
+                        <span class="download-sub">Windows 64-bit · 46.4 MB · .zip archive</span>
                     </div>
-                    <a class="download-btn" href="./downloads/performance_test_v1.0.1.exe" download="performance_test_v1.0.1.exe">Download</a>
+                    <a class="download-btn" href="./downloads/performance_test_v1.0.1.zip" download="performance_test_v1.0.1.zip">Download</a>
                 </div>
-                <p class="download-note">If the download doesn't start, right-click the button and choose "Save link as…".</p>
+                <p class="download-note">
+                    Extract the .zip first, then run <code>performance_test_v1.0.1.exe</code>.
+                    It is not code-signed, so Windows SmartScreen may warn you —
+                    click "More info" then "Run anyway". A README inside the archive
+                    lists the SHA256 checksum so you can verify the file.
+                </p>
             </div>
         </div>
 
