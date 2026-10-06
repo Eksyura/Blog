@@ -327,6 +327,34 @@
             transform: translateY(0);
         }
 
+        /* 多个程序的列表：每一项之间一条细分隔线 */
+        .program-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .program-list .download-item {
+            margin-top: 0;
+        }
+
+        .download-platform {
+            flex: 0 0 auto;
+            display: inline-block;
+            align-self: flex-start;
+            padding: 2px 9px;
+            border-radius: 40px;
+            font-size: 0.66rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #35507a;
+            background: rgba(74, 127, 212, 0.18);
+            border: 1px solid rgba(74, 127, 212, 0.3);
+            margin-top: 5px;
+        }
+
         .download-note {
             font-size: 0.78rem;
             line-height: 1.5;
@@ -442,18 +470,42 @@
             <!-- 卡片3：程序下载 -->
             <div class="glass-card">
                 <h3>download my program</h3>
-                <div class="download-item">
-                    <div class="download-meta">
-                        <span class="download-name">performance_test_v1.0.1.zip</span>
-                        <span class="download-sub">Windows 64-bit · 46.4 MB · .zip archive</span>
+                <div class="program-list">
+                    <!-- 程序 1：Windows -->
+                    <div class="download-item">
+                        <div class="download-meta">
+                            <span class="download-name">performance_test_v1.0.1.zip</span>
+                            <span class="download-sub">46.4 MB · .zip archive</span>
+                            <span class="download-platform">Windows 64-bit</span>
+                        </div>
+                        <a class="download-btn" href="./downloads/performance_test_v1.0.1.zip" download="performance_test_v1.0.1.zip">Download</a>
                     </div>
-                    <a class="download-btn" href="./downloads/performance_test_v1.0.1.zip" download="performance_test_v1.0.1.zip">Download</a>
+
+                    <!-- 程序 2：Android -->
+                    <div class="download-item">
+                        <div class="download-meta">
+                            <span class="download-name">eksyura-blog-v1.0.zip</span>
+                            <span class="download-sub">0.44 MB · .zip archive</span>
+                            <span class="download-platform">Android 5.0+</span>
+                        </div>
+                        <a class="download-btn" href="./downloads/eksyura-blog-v1.0.zip" download="eksyura-blog-v1.0.zip">Download</a>
+                    </div>
                 </div>
+
                 <p class="download-note">
-                    Extract the .zip first, then run <code>performance_test_v1.0.1.exe</code>.
-                    It is not code-signed, so Windows SmartScreen may warn you —
-                    click "More info" then "Run anyway". A README inside the archive
-                    lists the SHA256 checksum so you can verify the file.
+                    Both archives contain a README with the SHA256 checksum, so you can
+                    verify nothing was altered.
+                </p>
+                <p class="download-note">
+                    <strong>Windows:</strong> extract the .zip first, then run
+                    <code>performance_test_v1.0.1.exe</code>. It is not code-signed, so
+                    SmartScreen may warn you — click "More info" then "Run anyway".
+                </p>
+                <p class="download-note">
+                    <strong>Android:</strong> extract <code>eksyura-blog-v1.0.apk</code> and
+                    tap it to install. Android will ask you to allow installing from this
+                    source, and Play Protect may warn you — tap "Install anyway". The app
+                    only asks for internet access.
                 </p>
             </div>
         </div>
