@@ -428,11 +428,14 @@
     <!-- ===== 背景：手机用静态图，桌面用两个 video 交叉淡入 ===== -->
     <div class="bg-still" aria-hidden="true"></div>
 
-    <!-- preload="none"：手机上完全不下载这 42 MB 的 4K 视频 -->
-    <video class="bg-video active" muted playsinline preload="none" aria-hidden="true">
+    <!-- 两个 video 都必须预加载：preload="none" 会让下一层在切换时才开始下载，
+         结果 700ms 的淡入里它可能还没有任何画面，淡上来的就是一片黑。
+         手机端不会下载它们：CSS 用 display:none 隐藏，且这些属性是懒加载的
+         （JS 还会加上 force-still 并 pause）。 -->
+    <video class="bg-video active" muted playsinline preload="auto" aria-hidden="true">
         <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
-    <video class="bg-video" muted playsinline preload="none" aria-hidden="true">
+    <video class="bg-video" muted playsinline preload="auto" aria-hidden="true">
         <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
 
@@ -591,10 +594,9 @@
             let loopTimer = null;
 
             function stopVideos() {
-                if (loopTimer) {
-                    clearTimeout(loopTimer);
-                    loopTimer = null;
-                }
+                clearLoopTimer();
+                swapping = false;
+                fadingOut.clear();
                 videos.forEach(function (v) {
                     v.pause();
                     v.classList.remove('active');
@@ -614,6 +616,20 @@
 
             // ---------- 3. 交叉淡入：按视频真实时长排程 ----------
             // 原代码写死 8000ms，而这个视频实际 8.5s，所以每次都在尾部截断 → 接缝闪烁。
+            // 淡入时长（CSS 里的 transition）必须和这里的 FADE_MS 一致。
+            const FADE_MS = 700;
+            // 在真正结束前多久开始交叉淡入。同时覆盖 transition 的时长，
+            // 保证旧的一层在新的一层完全显形之后才被换掉。
+            const LEAD_MS = FADE_MS + 400;
+            // 万一下一层一直没就绪，最多等这么久就强行淡入，不能让循环卡死
+            const READY_TIMEOUT_MS = 1500;
+
+            // 注意：loopTimer 已经在上面（第 2 段）声明过了，这里不能再声明一次，
+            // 否则整个脚本会被 SyntaxError 干掉。
+            let swapping = false;
+            // 正在淡出（已不再 active，但还在播完过渡）的那一层
+            const fadingOut = new Set();
+
             function durationOf(v) {
                 const d = v.duration;
                 return (isFinite(d) && d > 0.5) ? d : 8.5;
@@ -623,34 +639,100 @@
                 return videos[0].classList.contains('active') ? 0 : 1;
             }
 
-            function scheduleSwap() {
+            function clearLoopTimer() {
                 if (loopTimer) {
                     clearTimeout(loopTimer);
+                    loopTimer = null;
                 }
+            }
+
+            function scheduleSwap() {
+                clearLoopTimer();
                 const cur = videos[startIndex()];
-                const wait = Math.max(600, (durationOf(cur) - 0.9) * 1000);
+                const wait = Math.max(600, (durationOf(cur) - LEAD_MS / 1000) * 1000);
                 loopTimer = setTimeout(swap, wait);
             }
 
+            // 下一层是否已经有一帧可以画出来了。
+            // 2 = HAVE_CURRENT_DATA，有当前播放位置的帧。
+            function isPaintable(v) {
+                return v.readyState >= 2;
+            }
+
+            // 等下一层真正可以显示画面之后再回调。
+            // play() 的 promise resolve 只表示"开始播放了"，不代表画面已经上屏；
+            // 在那之前就淡入，看到的就是一闪而过的黑。
+            function waitUntilPaintable(v, cb) {
+                if (isPaintable(v)) {
+                    // 已经就绪也要等一帧，确保这一帧已经进到合成器里
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(cb);
+                    });
+                    return;
+                }
+
+                let done = false;
+                const finish = function () {
+                    if (done) {
+                        return;
+                    }
+                    done = true;
+                    clearTimeout(timer);
+                    v.removeEventListener('loadeddata', finish);
+                    v.removeEventListener('canplay', finish);
+                    v.removeEventListener('playing', onPlaying);
+                    requestAnimationFrame(function () {
+                        requestAnimationFrame(cb);
+                    });
+                };
+                // playing 事件在这一帧已经开始播放时触发，是比 loadeddata 更强的信号
+                const onPlaying = function () {
+                    if (isPaintable(v)) {
+                        finish();
+                    }
+                };
+                const timer = setTimeout(finish, READY_TIMEOUT_MS);
+
+                v.addEventListener('loadeddata', finish);
+                v.addEventListener('canplay', finish);
+                v.addEventListener('playing', onPlaying);
+            }
+
             function swap() {
+                if (swapping) {
+                    return; // 定时器和 ended 事件可能都想切，只处理一次
+                }
+                swapping = true;
+                clearLoopTimer();
+
                 const curIndex = videos[0].classList.contains('active') ? 0 : 1;
                 const nextIndex = 1 - curIndex;
                 const cur = videos[curIndex];
                 const next = videos[nextIndex];
 
-                // 关键：先让下一个从 0 帧柔和淡入，等淡完了再重置旧的。
-                // 绝不能把当前可见的视频重置回 0，那一下就是"闪烁"的来源。
+                // 关键：先把下一层准备好并且真的开始播，再淡入。
+                // 绝不能把当前可见的一层重置回 0，那一下就是"闪烁"的来源。
                 next.currentTime = 0;
                 next.play().catch(function () {});
-                next.classList.add('active');
-                cur.classList.remove('active');
 
-                setTimeout(function () {
-                    cur.pause();
-                    cur.currentTime = 0;
-                }, 800);
+                waitUntilPaintable(next, function () {
+                    next.classList.add('active');
+                    cur.classList.remove('active');
+                    // active 是同步翻转的，但旧的一层还要继续播完这次淡出。
+                    // 标记它正在淡出，免得它这段时间结束而误触发又一次切换。
+                    fadingOut.add(cur);
 
-                scheduleSwap();
+                    // 旧的一层要继续播完这次交叉淡入，不能提前暂停，
+                    // 否则淡出过程中它自己会定格
+                    setTimeout(function () {
+                        cur.pause();
+                        cur.currentTime = 0;
+                        fadingOut.delete(cur);
+                    }, FADE_MS + 120);
+
+                    swapping = false;
+                    scheduleSwap();
+                });
             }
 
             // 元数据到手后按真实时长排程；没拿到就先用默认值
@@ -663,6 +745,20 @@
                 v.addEventListener('error', function () {
                     // 视频挂了就退回静态图，别留一片空白
                     html.classList.add('force-still');
+                });
+                // 视频比定时器先结束（掉帧、缓冲、后台标签页）时立即切换，
+                // 否则会停在一张不动的末帧上。
+                // 正在淡出的那一层要排除掉：它此刻结束是正常的，不该再触发一次切换。
+                v.addEventListener('ended', function () {
+                    if (html.classList.contains('force-still') || swapping) {
+                        return;
+                    }
+                    if (fadingOut.has(v)) {
+                        return;
+                    }
+                    if (v.classList.contains('active')) {
+                        swap();
+                    }
                 });
             });
 
