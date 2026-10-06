@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#12151b">
     <title>The blog of Eksyura</title>
     <!-- 设备判断必须在 CSS 之前跑，否则手机会先闪一下视频 -->
     <script>
@@ -71,7 +72,7 @@
             justify-content: center;
             padding: 20px;
             position: relative;
-            background: #b8c9e0;
+            background: #12151b;
             overflow-x: clip;
             scrollbar-gutter: stable;
             overscroll-behavior-y: none;
@@ -187,21 +188,21 @@
             /* 毛玻璃：背景"透不透得上来"取决于这个 alpha。
                0.85 以上 = 实心白板；0.5 左右才能看见背景的颜色和明暗。
                注意 alpha 只加在背景色上，文字仍然是全不透明，所以发虚的只有背景。 */
-            background: rgba(255, 255, 255, 0.52);
-            backdrop-filter: blur(12px) saturate(150%);
-            -webkit-backdrop-filter: blur(12px) saturate(150%);
+            background: rgba(18, 21, 27, 0.60);
+            backdrop-filter: blur(12px) saturate(115%);
+            -webkit-backdrop-filter: blur(12px) saturate(115%);
             border-radius: 28px;
-            border: 1px solid rgba(255, 255, 255, 0.65);
-            box-shadow: 0 10px 34px rgba(16, 24, 40, 0.16),
-                        0 1px 0 rgba(255, 255, 255, 0.5) inset;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35),
+                        0 1px 0 rgba(255, 255, 255, 0.06) inset;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             padding: 24px 22px;
-            color: #1e2b3c;
+            color: #e8ecf1;
         }
 
         .glass-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1), 0 4px 30px rgba(255, 255, 255, 0.35) inset;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 4px 30px rgba(255, 255, 255, 0.08) inset;
         }
 
         /* 卡片内部排版 */
@@ -210,21 +211,21 @@
             font-weight: 600;
             margin-bottom: 12px;
             letter-spacing: -0.02em;
-            color: #1a2632;
-            text-shadow: 0 1px 4px rgba(255,255,255,0.5);
+            color: #f2f5f8;
+            text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
         }
 
         .glass-card h3 {
             font-size: 1.3rem;
             font-weight: 500;
             margin-bottom: 12px;
-            color: #1e2b3c;
+            color: #e8ecf1;
         }
 
         .glass-card p {
             font-size: 0.95rem;
             line-height: 1.6;
-            color: #2e3c4b;
+            color: #b9c2cd;
             margin-bottom: 10px;
         }
 
@@ -241,9 +242,9 @@
 
         .glass-card ul li {
             padding: 8px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
             font-size: 0.95rem;
-            color: #1e2b3c;
+            color: #cbd3dd;
         }
 
         .glass-card ul li:last-child {
@@ -256,7 +257,7 @@
             padding: 12px 14px 12px 16px;
             border-left: 3px solid rgba(74, 127, 212, 0.65);
             border-radius: 4px 14px 14px 4px;
-            background: rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.07);
             transition: opacity 0.5s ease;
         }
 
@@ -273,7 +274,7 @@
             font-size: 0.68rem;
             letter-spacing: 0.14em;
             text-transform: uppercase;
-            color: #5a6c80;
+            color: #8695a8;
             margin-bottom: 7px;
         }
 
@@ -282,7 +283,7 @@
             font-style: italic;
             font-size: 0.95rem;
             line-height: 1.65;
-            color: #1a2632;
+            color: #eef2f6;
             margin: 0;
         }
 
@@ -298,7 +299,7 @@
             display: block;
             margin-top: 8px;
             font-size: 0.8rem;
-            color: #46586c;
+            color: #98a5b6;
             letter-spacing: 0.02em;
         }
 
@@ -314,8 +315,8 @@
             gap: 12px;
             padding: 12px 14px;
             border-radius: 18px;
-            background: rgba(255, 255, 255, 0.28);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
             margin-top: 10px;
         }
 
@@ -329,13 +330,13 @@
         .download-name {
             font-size: 0.95rem;
             font-weight: 600;
-            color: #1a2632;
+            color: #eef2f6;
             word-break: break-all;
         }
 
         .download-sub {
             font-size: 0.78rem;
-            color: #46586c;
+            color: #98a5b6;
         }
 
         .download-btn {
@@ -387,16 +388,16 @@
             font-weight: 600;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: #35507a;
-            background: rgba(74, 127, 212, 0.18);
-            border: 1px solid rgba(74, 127, 212, 0.3);
+            color: #a9c6f0;
+            background: rgba(74, 127, 212, 0.28);
+            border: 1px solid rgba(110, 160, 230, 0.45);
             margin-top: 5px;
         }
 
         .download-note {
             font-size: 0.78rem;
             line-height: 1.5;
-            color: #46586c;
+            color: #98a5b6;
             margin-top: 10px;
         }
 
@@ -405,8 +406,8 @@
             font-size: 0.74rem;
             padding: 1px 5px;
             border-radius: 6px;
-            background: rgba(255, 255, 255, 0.55);
-            border: 1px solid rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.16);
             word-break: break-all;
         }
 
@@ -418,18 +419,19 @@
 
         .tag-cloud span {
             padding: 5px 14px;
-            background: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.08);
             backdrop-filter: blur(4px);
             border-radius: 40px;
             font-size: 0.85rem;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #d3dae3;
+            border: 1px solid rgba(255, 255, 255, 0.14);
             transition: all 0.2s ease;
             cursor: default;
         }
 
         .tag-cloud span:hover {
-            background: rgba(255, 255, 255, 0.7);
-            border-color: white;
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.4);
         }
 
         /* ---------- 响应式：窄屏全部单列 ---------- */
@@ -523,11 +525,11 @@
                     <!-- 程序 2：Android -->
                     <div class="download-item">
                         <div class="download-meta">
-                            <span class="download-name">eksyura-blog-v1.0.zip</span>
-                            <span class="download-sub">0.46 MB · .zip archive</span>
+                            <span class="download-name">eksyura-blog-v1.1.zip</span>
+                            <span class="download-sub">0.34 MB · .zip archive</span>
                             <span class="download-platform">Android 5.0+</span>
                         </div>
-                        <a class="download-btn" href="./downloads/eksyura-blog-v1.0.zip" download="eksyura-blog-v1.0.zip">Download</a>
+                        <a class="download-btn" href="./downloads/eksyura-blog-v1.1.zip" download="eksyura-blog-v1.1.zip">Download</a>
                     </div>
                 </div>
 
