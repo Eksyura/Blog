@@ -16,6 +16,45 @@
         })();
     </script>
     <style>
+        /* ---------- Cascadia Code（自托管，SIL OFL 许可） ----------
+           只带拉丁与拉丁扩展这两个子集：其它语言的字形不在里面对应，
+           交给 unicode-range 落到系统字体，避免用错子集渲染。 */
+        @font-face {
+            font-family: 'Cascadia Code';
+            font-style: normal;
+            font-display: swap;
+            font-weight: 200 700;
+            src: url('./fonts/cascadia-code-latin-wght-normal.woff2') format('woff2-variations');
+            unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+        }
+
+        @font-face {
+            font-family: 'Cascadia Code';
+            font-style: normal;
+            font-display: swap;
+            font-weight: 200 700;
+            src: url('./fonts/cascadia-code-latin-ext-wght-normal.woff2') format('woff2-variations');
+            unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+        }
+
+        @font-face {
+            font-family: 'Cascadia Code';
+            font-style: italic;
+            font-display: swap;
+            font-weight: 200 700;
+            src: url('./fonts/cascadia-code-latin-wght-italic.woff2') format('woff2-variations');
+            unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+        }
+
+        @font-face {
+            font-family: 'Cascadia Code';
+            font-style: italic;
+            font-display: swap;
+            font-weight: 200 700;
+            src: url('./fonts/cascadia-code-latin-ext-wght-italic.woff2') format('woff2-variations');
+            unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -23,7 +62,7 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Consolas, 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', monospace;
             /* 手机地址栏伸缩会让 100vh 变化、内容跟着跳：用 svh/dvh + JS 兜底 */
             --app-vh: 100vh;
             min-height: var(--app-vh);
@@ -362,7 +401,7 @@
         }
 
         .download-note code {
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-family: 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
             font-size: 0.74rem;
             padding: 1px 5px;
             border-radius: 6px;
@@ -485,7 +524,7 @@
                     <div class="download-item">
                         <div class="download-meta">
                             <span class="download-name">eksyura-blog-v1.0.zip</span>
-                            <span class="download-sub">0.44 MB · .zip archive</span>
+                            <span class="download-sub">0.46 MB · .zip archive</span>
                             <span class="download-platform">Android 5.0+</span>
                         </div>
                         <a class="download-btn" href="./downloads/eksyura-blog-v1.0.zip" download="eksyura-blog-v1.0.zip">Download</a>
