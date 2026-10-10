@@ -17,9 +17,7 @@
         })();
     </script>
     <style>
-        /* ---------- Cascadia Code（自托管，SIL OFL 许可） ----------
-           只带拉丁与拉丁扩展这两个子集：其它语言的字形不在里面对应，
-           交给 unicode-range 落到系统字体，避免用错子集渲染。 */
+        /* ---------- Cascadia Code（自托管，SIL OFL 许可） ---------- */
         @font-face {
             font-family: 'Cascadia Code';
             font-style: normal;
@@ -64,7 +62,6 @@
 
         body {
             font-family: 'Cascadia Code', ui-monospace, SFMono-Regular, Menlo, Consolas, 'SimSun', 'Songti SC', 'PingFang SC', 'Microsoft YaHei', monospace;
-            /* 手机地址栏伸缩会让 100vh 变化、内容跟着跳：用 svh/dvh + JS 兜底 */
             --app-vh: 100vh;
             min-height: var(--app-vh);
             display: flex;
@@ -84,7 +81,6 @@
             }
         }
 
-        /* ===== 背景层：桌面用两层 video 交叉淡入，手机用一张静态图 ===== */
         .bg-video,
         .bg-still {
             position: fixed;
@@ -98,10 +94,7 @@
         }
 
         .bg-video {
-            /* 只有一层，不再需要 opacity 过渡 */
             opacity: 1;
-            /* 只虚化一点点：背景太糊的话，卡片的毛玻璃就没有细节可以"磨"了。
-               scale 略大于 1 是为了盖住 blur 导致边缘向外半透明的那一圈。 */
             filter: blur(2.5px) brightness(1.02) saturate(1.05);
             transform: scale(1.015);
         }
@@ -120,7 +113,6 @@
             transform: scale(1.015);
         }
 
-        /* 手机：不加载也不播 4K 视频，只显示静态图 */
         html.is-mobile .bg-video {
             display: none;
         }
@@ -129,14 +121,10 @@
             display: block;
         }
 
-        /* 滚动时背景不要跟着晃 */
         html.is-mobile body {
             overscroll-behavior-y: none;
         }
 
-        /* 柔和的色调遮罩：蓝味压到最低的中性暖灰。
-           整体压得比原来浅，左上（卡片所在区域）留得更亮 —— 背景太暗的话，
-           卡片虽然半透明，透上来的也只有一片灰，看不到颜色和明暗。 */
         .bg-overlay {
             position: fixed;
             top: 0;
@@ -152,7 +140,6 @@
             );
         }
 
-        /* ---------- 主布局：左边一列，右边一列，中间空档偏右 ---------- */
         .blog-layout {
             width: 100%;
             max-width: 1200px;
@@ -162,7 +149,6 @@
             align-items: start;
         }
 
-        /* 左列：包含三个卡片 */
         .column-left {
             display: flex;
             flex-direction: column;
@@ -170,12 +156,10 @@
             grid-column: 1;
         }
 
-        /* 中间空档列（不需要内容，仅占位） */
         .spacer {
             grid-column: 2;
         }
 
-        /* 右列：包含三个卡片 */
         .column-right {
             display: flex;
             flex-direction: column;
@@ -183,11 +167,7 @@
             grid-column: 3;
         }
 
-        /* 毛玻璃卡片 */
         .glass-card {
-            /* 毛玻璃：背景"透不透得上来"取决于这个 alpha。
-               0.85 以上 = 实心白板；0.5 左右才能看见背景的颜色和明暗。
-               注意 alpha 只加在背景色上，文字仍然是全不透明，所以发虚的只有背景。 */
             background: rgba(18, 21, 27, 0.60);
             backdrop-filter: blur(12px) saturate(115%);
             -webkit-backdrop-filter: blur(12px) saturate(115%);
@@ -205,7 +185,6 @@
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), 0 4px 30px rgba(255, 255, 255, 0.08) inset;
         }
 
-        /* 卡片内部排版 */
         .glass-card h2 {
             font-size: 1.8rem;
             font-weight: 600;
@@ -229,7 +208,6 @@
             margin-bottom: 10px;
         }
 
-        /* 名句块不要被上面的 <p> 规则带上斜体（斜体由 .quote-text 自己控制） */
         .glass-card p.quote-block,
         .glass-card blockquote {
             font-style: normal;
@@ -251,7 +229,6 @@
             border-bottom: none;
         }
 
-        /* ---------- 每次进入随机展示一句哲学家名句 ---------- */
         .quote-block {
             margin-top: 16px;
             padding: 12px 14px 12px 16px;
@@ -307,7 +284,6 @@
             content: '\2014\2002';
         }
 
-        /* ---------- 程序下载卡片 ---------- */
         .download-item {
             display: flex;
             align-items: center;
@@ -366,7 +342,6 @@
             transform: translateY(0);
         }
 
-        /* 多个程序的列表：每一项之间一条细分隔线 */
         .program-list {
             display: flex;
             flex-direction: column;
@@ -434,6 +409,55 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
+        /* ---------- 随机图片卡片 ---------- */
+        .random-img-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            border-radius: 18px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
+        }
+
+        .random-img-el {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: opacity 0.4s ease;
+        }
+
+        .random-img-el[hidden] {
+            display: none;
+        }
+
+        .random-img-status {
+            font-size: 0.85rem;
+            color: #98a5b6;
+            padding: 0 12px;
+            text-align: center;
+        }
+
+        .random-img-status.error {
+            color: #e08c8c;
+        }
+
+        .random-img-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .random-img-actions .download-btn {
+            flex: 1;
+            justify-content: center;
+            text-align: center;
+        }
+
         /* ---------- 响应式：窄屏全部单列 ---------- */
         @media (max-width: 900px) {
             .blog-layout {
@@ -465,23 +489,15 @@
     </style>
 </head>
 <body>
-    <!-- ===== 背景：手机用静态图，桌面用一个原生循环（natively looping）的 video ===== -->
     <div class="bg-still" aria-hidden="true"></div>
 
-    <!-- 只用一层，靠 loop 属性原生循环。
-         不再用两层交叉淡入：两层半透明叠加时，合成亮度会在交叉点凹陷，
-         看起来就是"淡一下又回来"，而且两层要解码两次。
-         手机端不会下载它：CSS 用 display:none 隐藏，这些属性是懒加载的，
-         JS 还会加上 force-still 并 pause()。 -->
     <video class="bg-video active" autoplay loop muted playsinline preload="auto" aria-hidden="true">
         <source src="./backgroundgirl.mp4" type="video/mp4">
     </video>
 
     <div class="bg-overlay"></div>
 
-    <!-- 双列布局 -->
     <div class="blog-layout">
-        <!-- 左列：三个卡片 -->
         <div class="column-left">
             <!-- 卡片1：个人资料 -->
             <div class="glass-card">
@@ -489,7 +505,6 @@
                 <p>I don't know what can be but here</p>
                 <p style="font-size:0.9rem; opacity:0.8; margin-top:8px;">INTP / INFP</p>
 
-                <!-- 每次进入随机换一句 -->
                 <blockquote class="quote-block" id="daily-quote" hidden>
                     <span class="quote-label">A thought</span>
                     <p class="quote-text" id="quote-text"></p>
@@ -512,7 +527,6 @@
             <div class="glass-card">
                 <h3>download my program</h3>
                 <div class="program-list">
-                    <!-- 程序 1：Windows -->
                     <div class="download-item">
                         <div class="download-meta">
                             <span class="download-name">performance_test_v1.0.1.zip</span>
@@ -522,7 +536,6 @@
                         <a class="download-btn" href="./downloads/performance_test_v1.0.1.zip" download="performance_test_v1.0.1.zip">Download</a>
                     </div>
 
-                    <!-- 程序 2：Android -->
                     <div class="download-item">
                         <div class="download-meta">
                             <span class="download-name">eksyura-blog-v1.1.zip</span>
@@ -549,12 +562,25 @@
                     only asks for internet access.
                 </p>
             </div>
+
+            <!-- 卡片4：随机图片 -->
+            <div class="glass-card" id="random-image-card">
+                <h3>Random Image </h3>
+                <div class="random-img-wrap" id="random-img-wrap">
+                    <div class="random-img-status" id="random-img-status">Loading...</div>
+                    <img id="random-img-el" class="random-img-el" alt="Random image" hidden>
+                </div>
+                <div class="random-img-actions">
+                    <button class="download-btn" id="random-img-refresh" type="button" style="cursor:pointer;border:none;font-family:inherit;">Refresh</button>
+                    <p class="download-note" style="margin-top:12px; text-align:center;">
+                    图片为第三方API提供，不适合所有年龄段，请谨慎观看。
+                </p>
+                </div>
+            </div>
         </div>
 
-        <!-- 中间空档列（仅占位，无内容） -->
         <div class="spacer"></div>
 
-        <!-- 右列：三个卡片 -->
         <div class="column-right">
             <!-- 卡片1：关于我 -->
             <div class="glass-card">
@@ -588,26 +614,19 @@
         </div>
     </div>
 
-    <!-- ===== 背景控制：桌面视频交叉淡入 / 手机静态图 / 消除 100vh 跳动 ===== -->
+    <!-- ===== 背景控制 ===== -->
     <script>
         (function () {
             const html = document.documentElement;
             const videos = Array.prototype.slice.call(document.querySelectorAll('.bg-video'));
 
-            // ---------- 1. 视口高度：JS 兜底，配合 CSS 的 svh ----------
-            // 只在浏览器不支持 svh 时才自己算高度 —— 手机上地址栏收起/展开都会触发
-            // resize，跟着改高度正是"跳动"的来源，所以这里刻意不监听它。
             let appVhPx = 0;
             function usesSvh() {
-                // 用 window.CSS 而不是裸的 CSS：后者在缺少该全局变量的旧浏览器里
-                // 会直接抛 ReferenceError，把整个背景脚本带崩
                 return !!(window.CSS && window.CSS.supports &&
                           window.CSS.supports('min-height', '100svh'));
             }
             function recordVh() {
-                if (usesSvh()) {
-                    return; // 交给 CSS 的 100svh，它本身不随地址栏变化
-                }
+                if (usesSvh()) return;
                 const h = window.innerHeight || 0;
                 if (h > appVhPx) {
                     appVhPx = h;
@@ -619,7 +638,6 @@
                 setTimeout(recordVh, 300);
             });
 
-            // ---------- 2. 手机 → 静态图，不碰视频 ----------
             function isMobileDevice() {
                 const ua = navigator.userAgent || '';
                 return /Android|iPhone|iPad|iPod|Windows Phone|Mobile|Silk/i.test(ua) ||
@@ -630,43 +648,26 @@
             }
 
             function stopVideos() {
-                videos.forEach(function (v) {
-                    v.pause();
-                });
+                videos.forEach(function (v) { v.pause(); });
             }
 
             function startVideos() {
-                // loop 属性负责循环，这里只负责让它开始播
-                videos.forEach(function (v) {
-                    v.play().catch(function () {});
-                });
+                videos.forEach(function (v) { v.play().catch(function () {}); });
             }
 
             function setStill(on) {
                 html.classList.toggle('force-still', on);
-                if (on) {
-                    stopVideos();
-                } else {
-                    startVideos();
-                }
+                if (on) stopVideos(); else startVideos();
             }
 
-            // ---------- 3. 循环交给 video 的 loop 属性 ----------
-            // 这里不再排程切换：两层交叉淡入会让合成亮度在交叉点凹陷，
-            // 单层原生循环既没有那个凹陷，也只解码一次。
             videos.forEach(function (v) {
-                // 加载失败就退回静态图，别留一片空白
                 v.addEventListener('error', function () {
                     html.classList.add('force-still');
                 });
             });
 
-            // 首次播放在 DOM 就绪后（此刻 video 元素可能还没解析出来）
             function boot() {
-                if (prefersStill()) {
-                    setStill(true);
-                    return;
-                }
+                if (prefersStill()) { setStill(true); return; }
                 startVideos();
             }
 
@@ -676,11 +677,8 @@
                 boot();
             }
 
-            // 标签页切到后台就暂停解码，回来再继续
             document.addEventListener('visibilitychange', function () {
-                if (html.classList.contains('force-still')) {
-                    return;
-                }
+                if (html.classList.contains('force-still')) return;
                 if (document.hidden) {
                     videos.forEach(function (v) { v.pause(); });
                 } else {
@@ -688,421 +686,118 @@
                 }
             });
 
-            // 旋屏 / 缩放时重新判断：手机横屏或桌面窗口变宽就放视频
             window.addEventListener('resize', function () {
-                if (prefersStill()) {
-                    setStill(true);
-                } else if (html.classList.contains('force-still')) {
-                    setStill(false);
-                }
+                if (prefersStill()) setStill(true);
+                else if (html.classList.contains('force-still')) setStill(false);
             });
         })();
     </script>
-    <!-- ===== 哲学家名句：每次进入随机展示一句 ===== -->
+
+    <!-- ===== 哲学家名句 ===== -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
         (function () {
             var QUOTES = [
-              {
-                "a": "Socrates",
-                "q": "The unexamined life is not worth living."
-              },
-              {
-                "a": "Socrates",
-                "q": "I know that I know nothing."
-              },
-              {
-                "a": "Socrates",
-                "q": "Wonder is the beginning of wisdom."
-              },
-              {
-                "a": "Plato",
-                "q": "The greatest wealth is to live content with little."
-              },
-              {
-                "a": "Plato",
-                "q": "wise men speak because they have something to say; fools because they have to say something."
-              },
-              {
-                "a": "Plato",
-                "q": "The measure of a man is what he does with power."
-              },
-              {
-                "a": "Aristotle",
-                "q": "We are what we repeatedly do. Excellence, then, is not an act, but a habit."
-              },
-              {
-                "a": "Aristotle",
-                "q": "Knowing yourself is the beginning of all wisdom."
-              },
-              {
-                "a": "Aristotle",
-                "q": "It is the mark of an educated mind to be able to entertain a thought without accepting it."
-              },
-              {
-                "a": "Aristotle",
-                "q": "The educated differ from the uneducated as much as the living from the dead."
-              },
-              {
-                "a": "Confucius",
-                "q": "It does not matter how slowly you go as long as you do not stop."
-              },
-              {
-                "a": "Confucius",
-                "q": "Real knowledge is to know the extent of one's ignorance."
-              },
-              {
-                "a": "Confucius",
-                "q": "The man who moves a mountain begins by carrying away small stones."
-              },
-              {
-                "a": "Laozi",
-                "q": "A journey of a thousand miles begins with a single step."
-              },
-              {
-                "a": "Laozi",
-                "q": "Knowing others is intelligence; knowing yourself is true wisdom."
-              },
-              {
-                "a": "Laozi",
-                "q": "When I let go of what I am, I become what I might be."
-              },
-              {
-                "a": "Marcus Aurelius",
-                "q": "You have power over your mind, not outside events. Realize this, and you will find strength."
-              },
-              {
-                "a": "Marcus Aurelius",
-                "q": "The happiness of your life depends upon the quality of your thoughts."
-              },
-              {
-                "a": "Marcus Aurelius",
-                "q": "Waste no more time arguing about what a good man should be. Be one."
-              },
-              {
-                "a": "Marcus Aurelius",
-                "q": "The best revenge is to be unlike him who performed the injury."
-              },
-              {
-                "a": "Epictetus",
-                "q": "It's not what happens to you, but how you react to it that matters."
-              },
-              {
-                "a": "Epictetus",
-                "q": "No man is free who is not master of himself."
-              },
-              {
-                "a": "Epictetus",
-                "q": "First say to yourself what you would be; and then do what you have to do."
-              },
-              {
-                "a": "Epictetus",
-                "q": "Wealth consists not in having great possessions, but in having few wants."
-              },
-              {
-                "a": "Seneca",
-                "q": "We suffer more often in imagination than in reality."
-              },
-              {
-                "a": "Seneca",
-                "q": "Luck is what happens when preparation meets opportunity."
-              },
-              {
-                "a": "Seneca",
-                "q": "Every new beginning comes from some other beginning's end."
-              },
-              {
-                "a": "Seneca",
-                "q": "It is not that we have a short time to live, but that we waste a lot of it."
-              },
-              {
-                "a": "Cicero",
-                "q": "A room without books is like a body without a soul."
-              },
-              {
-                "a": "Cicero",
-                "q": "The life of the dead is placed in the memory of the living."
-              },
-              {
-                "a": "Augustine",
-                "q": "The world is a book, and those who do not travel read only one page."
-              },
-              {
-                "a": "Augustine",
-                "q": "Patience is the companion of wisdom."
-              },
-              {
-                "a": "Thomas Aquinas",
-                "q": "Beware the man of one book."
-              },
-              {
-                "a": "Thomas Aquinas",
-                "q": "To one who has faith, no explanation is necessary. To one without faith, no explanation is possible."
-              },
-              {
-                "a": "Montaigne",
-                "q": "My life has been full of terrible misfortunes most of which never happened."
-              },
-              {
-                "a": "Montaigne",
-                "q": "Nothing is so firmly believed as that which we least know."
-              },
-              {
-                "a": "Montaigne",
-                "q": "The greatest thing in the world is to know how to belong to oneself."
-              },
-              {
-                "a": "Francis Bacon",
-                "q": "Knowledge itself is power."
-              },
-              {
-                "a": "Francis Bacon",
-                "q": "Some books are to be tasted, others to be swallowed, and some few to be chewed and digested."
-              },
-              {
-                "a": "Descartes",
-                "q": "I think, therefore I am."
-              },
-              {
-                "a": "Descartes",
-                "q": "It is not enough to have a good mind; the main thing is to use it well."
-              },
-              {
-                "a": "Descartes",
-                "q": "Doubt is the origin of wisdom."
-              },
-              {
-                "a": "Pascal",
-                "q": "The heart has its reasons of which reason knows nothing."
-              },
-              {
-                "a": "Pascal",
-                "q": "All of humanity's problems stem from man's inability to sit quietly in a room alone."
-              },
-              {
-                "a": "Pascal",
-                "q": "Man is but a reed, the most feeble thing in nature, but he is a thinking reed."
-              },
-              {
-                "a": "Spinoza",
-                "q": "Peace is not an absence of war, it is a virtue, a state of mind, a disposition for benevolence, confidence, justice."
-              },
-              {
-                "a": "Spinoza",
-                "q": "All things excellent are as difficult as they are rare."
-              },
-              {
-                "a": "Spinoza",
-                "q": "Do not weep; do not wax indignant. Understand."
-              },
-              {
-                "a": "Leibniz",
-                "q": "This is the best of all possible worlds."
-              },
-              {
-                "a": "Locke",
-                "q": "No man's knowledge here can go beyond his experience."
-              },
-              {
-                "a": "Locke",
-                "q": "The only fence against the world is a thorough knowledge of it."
-              },
-              {
-                "a": "Hume",
-                "q": "A wise man proportions his belief to the evidence."
-              },
-              {
-                "a": "Hume",
-                "q": "Beauty is no quality in things themselves: it exists merely in the mind which contemplates them."
-              },
-              {
-                "a": "Rousseau",
-                "q": "Man is born free, and everywhere he is in chains."
-              },
-              {
-                "a": "Rousseau",
-                "q": "Patience is bitter, but its fruit is sweet."
-              },
-              {
-                "a": "Voltaire",
-                "q": "Judge a man by his questions rather than by his answers."
-              },
-              {
-                "a": "Voltaire",
-                "q": "Common sense is not so common."
-              },
-              {
-                "a": "Voltaire",
-                "q": "The perfect is the enemy of the good."
-              },
-              {
-                "a": "Montesquieu",
-                "q": "To become truly great, one has to stand with people, not above them."
-              },
-              {
-                "a": "Diderot",
-                "q": "There is no moral precept that does not have something inconvenient about it."
-              },
-              {
-                "a": "Kant",
-                "q": "Two things fill the mind with ever new and increasing admiration: the starry heavens above me and the moral law within me."
-              },
-              {
-                "a": "Kant",
-                "q": "Act only according to that maxim whereby you can at the same time will that it should become a universal law."
-              },
-              {
-                "a": "Kant",
-                "q": "Science is organized knowledge. Wisdom is organized life."
-              },
-              {
-                "a": "Hegel",
-                "q": "We learn from history that we do not learn from history."
-              },
-              {
-                "a": "Hegel",
-                "q": "Nothing great in the world has been accomplished without passion."
-              },
-              {
-                "a": "Schopenhauer",
-                "q": "Talent hits a target no one else can hit; genius hits a target no one else can see."
-              },
-              {
-                "a": "Schopenhauer",
-                "q": "Most people, rather than think, merely rearrange their prejudices."
-              },
-              {
-                "a": "Schopenhauer",
-                "q": "The two enemies of human happiness are pain and boredom."
-              },
-              {
-                "a": "Kierkegaard",
-                "q": "Life can only be understood backwards; but it must be lived forwards."
-              },
-              {
-                "a": "Kierkegaard",
-                "q": "Anxiety is the dizziness of freedom."
-              },
-              {
-                "a": "Kierkegaard",
-                "q": "The most common form of despair is not being who you are."
-              },
-              {
-                "a": "Marx",
-                "q": "The philosophers have only interpreted the world; the point is to change it."
-              },
-              {
-                "a": "Marx",
-                "q": "History repeats itself, first as tragedy, second as farce."
-              },
-              {
-                "a": "Nietzsche",
-                "q": "He who has a why to live can bear almost any how."
-              },
-              {
-                "a": "Nietzsche",
-                "q": "That which does not kill us makes us stronger."
-              },
-              {
-                "a": "Nietzsche",
-                "q": "And those who were seen dancing were thought to be insane by those who could not hear the music."
-              },
-              {
-                "a": "Nietzsche",
-                "q": "Without music, life would be a mistake."
-              },
-              {
-                "a": "William James",
-                "q": "The greatest weapon against stress is our ability to choose one thought over another."
-              },
-              {
-                "a": "William James",
-                "q": "Act as if what you do makes a difference. It does."
-              },
-              {
-                "a": "William James",
-                "q": "The art of being wise is the art of knowing what to overlook."
-              },
-              {
-                "a": "Wittgenstein",
-                "q": "The limits of my language mean the limits of my world."
-              },
-              {
-                "a": "Wittgenstein",
-                "q": "Whereof one cannot speak, thereof one must be silent."
-              },
-              {
-                "a": "Wittgenstein",
-                "q": "Philosophy is a battle against the bewitchment of our intelligence by means of language."
-              },
-              {
-                "a": "Russell",
-                "q": "The whole problem with the world is that fools and fanatics are always so certain of themselves, and wiser people so full of doubts."
-              },
-              {
-                "a": "Russell",
-                "q": "To fear love is to fear life, and those who fear life are already three parts dead."
-              },
-              {
-                "a": "Russell",
-                "q": "The good life is one inspired by love and guided by knowledge."
-              },
-              {
-                "a": "Santayana",
-                "q": "Those who cannot remember the past are condemned to repeat it."
-              },
-              {
-                "a": "Santayana",
-                "q": "The world is a perpetual caricature of itself."
-              },
-              {
-                "a": "Camus",
-                "q": "In the depth of winter, I finally learned that within me there lay an invincible summer."
-              },
-              {
-                "a": "Camus",
-                "q": "Should I kill myself, or have a cup of coffee?"
-              },
-              {
-                "a": "Camus",
-                "q": "The only way to deal with an unfree world is to become so absolutely free that your very existence is an act of rebellion."
-              },
-              {
-                "a": "Sartre",
-                "q": "Man is condemned to be free."
-              },
-              {
-                "a": "Sartre",
-                "q": "We are our choices."
-              },
-              {
-                "a": "Sartre",
-                "q": "Freedom is what you do with what's been done to you."
-              },
-              {
-                "a": "Simone de Beauvoir",
-                "q": "One is not born, but rather becomes, a woman."
-              },
-              {
-                "a": "Simone de Beauvoir",
-                "q": "Change your life today. Don't gamble on the future, act now, without delay."
-              },
-              {
-                "a": "Hannah Arendt",
-                "q": "The most radical revolutionary will become a conservative the day after the revolution."
-              },
-              {
-                "a": "Hannah Arendt",
-                "q": "Forgiveness is the key to action and freedom."
-              },
-              {
-                "a": "Popper",
-                "q": "True ignorance is not the absence of knowledge, but the refusal to acquire it."
-              },
-              {
-                "a": "Popper",
-                "q": "We may become the makers of our fate when we have ceased to pose as its prophets."
-              }
+              { "a": "Socrates", "q": "The unexamined life is not worth living." },
+              { "a": "Socrates", "q": "I know that I know nothing." },
+              { "a": "Socrates", "q": "Wonder is the beginning of wisdom." },
+              { "a": "Plato", "q": "The greatest wealth is to live content with little." },
+              { "a": "Plato", "q": "wise men speak because they have something to say; fools because they have to say something." },
+              { "a": "Plato", "q": "The measure of a man is what he does with power." },
+              { "a": "Aristotle", "q": "We are what we repeatedly do. Excellence, then, is not an act, but a habit." },
+              { "a": "Aristotle", "q": "Knowing yourself is the beginning of all wisdom." },
+              { "a": "Aristotle", "q": "It is the mark of an educated mind to be able to entertain a thought without accepting it." },
+              { "a": "Aristotle", "q": "The educated differ from the uneducated as much as the living from the dead." },
+              { "a": "Confucius", "q": "It does not matter how slowly you go as long as you do not stop." },
+              { "a": "Confucius", "q": "Real knowledge is to know the extent of one's ignorance." },
+              { "a": "Confucius", "q": "The man who moves a mountain begins by carrying away small stones." },
+              { "a": "Laozi", "q": "A journey of a thousand miles begins with a single step." },
+              { "a": "Laozi", "q": "Knowing others is intelligence; knowing yourself is true wisdom." },
+              { "a": "Laozi", "q": "When I let go of what I am, I become what I might be." },
+              { "a": "Marcus Aurelius", "q": "You have power over your mind, not outside events. Realize this, and you will find strength." },
+              { "a": "Marcus Aurelius", "q": "The happiness of your life depends upon the quality of your thoughts." },
+              { "a": "Marcus Aurelius", "q": "Waste no more time arguing about what a good man should be. Be one." },
+              { "a": "Marcus Aurelius", "q": "The best revenge is to be unlike him who performed the injury." },
+              { "a": "Epictetus", "q": "It's not what happens to you, but how you react to it that matters." },
+              { "a": "Epictetus", "q": "No man is free who is not master of himself." },
+              { "a": "Epictetus", "q": "First say to yourself what you would be; and then do what you have to do." },
+              { "a": "Epictetus", "q": "Wealth consists not in having great possessions, but in having few wants." },
+              { "a": "Seneca", "q": "We suffer more often in imagination than in reality." },
+              { "a": "Seneca", "q": "Luck is what happens when preparation meets opportunity." },
+              { "a": "Seneca", "q": "Every new beginning comes from some other beginning's end." },
+              { "a": "Seneca", "q": "It is not that we have a short time to live, but that we waste a lot of it." },
+              { "a": "Cicero", "q": "A room without books is like a body without a soul." },
+              { "a": "Cicero", "q": "The life of the dead is placed in the memory of the living." },
+              { "a": "Augustine", "q": "The world is a book, and those who do not travel read only one page." },
+              { "a": "Augustine", "q": "Patience is the companion of wisdom." },
+              { "a": "Thomas Aquinas", "q": "Beware the man of one book." },
+              { "a": "Thomas Aquinas", "q": "To one who has faith, no explanation is necessary. To one without faith, no explanation is possible." },
+              { "a": "Montaigne", "q": "My life has been full of terrible misfortunes most of which never happened." },
+              { "a": "Montaigne", "q": "Nothing is so firmly believed as that which we least know." },
+              { "a": "Montaigne", "q": "The greatest thing in the world is to know how to belong to oneself." },
+              { "a": "Francis Bacon", "q": "Knowledge itself is power." },
+              { "a": "Francis Bacon", "q": "Some books are to be tasted, others to be swallowed, and some few to be chewed and digested." },
+              { "a": "Descartes", "q": "I think, therefore I am." },
+              { "a": "Descartes", "q": "It is not enough to have a good mind; the main thing is to use it well." },
+              { "a": "Descartes", "q": "Doubt is the origin of wisdom." },
+              { "a": "Pascal", "q": "The heart has its reasons of which reason knows nothing." },
+              { "a": "Pascal", "q": "All of humanity's problems stem from man's inability to sit quietly in a room alone." },
+              { "a": "Pascal", "q": "Man is but a reed, the most feeble thing in nature, but he is a thinking reed." },
+              { "a": "Spinoza", "q": "Peace is not an absence of war, it is a virtue, a state of mind, a disposition for benevolence, confidence, justice." },
+              { "a": "Spinoza", "q": "All things excellent are as difficult as they are rare." },
+              { "a": "Spinoza", "q": "Do not weep; do not wax indignant. Understand." },
+              { "a": "Leibniz", "q": "This is the best of all possible worlds." },
+              { "a": "Locke", "q": "No man's knowledge here can go beyond his experience." },
+              { "a": "Locke", "q": "The only fence against the world is a thorough knowledge of it." },
+              { "a": "Hume", "q": "A wise man proportions his belief to the evidence." },
+              { "a": "Hume", "q": "Beauty is no quality in things themselves: it exists merely in the mind which contemplates them." },
+              { "a": "Rousseau", "q": "Man is born free, and everywhere he is in chains." },
+              { "a": "Rousseau", "q": "Patience is bitter, but its fruit is sweet." },
+              { "a": "Voltaire", "q": "Judge a man by his questions rather than by his answers." },
+              { "a": "Voltaire", "q": "Common sense is not so common." },
+              { "a": "Voltaire", "q": "The perfect is the enemy of the good." },
+              { "a": "Montesquieu", "q": "To become truly great, one has to stand with people, not above them." },
+              { "a": "Diderot", "q": "There is no moral precept that does not have something inconvenient about it." },
+              { "a": "Kant", "q": "Two things fill the mind with ever new and increasing admiration: the starry heavens above me and the moral law within me." },
+              { "a": "Kant", "q": "Act only according to that maxim whereby you can at the same time will that it should become a universal law." },
+              { "a": "Kant", "q": "Science is organized knowledge. Wisdom is organized life." },
+              { "a": "Hegel", "q": "We learn from history that we do not learn from history." },
+              { "a": "Hegel", "q": "Nothing great in the world has been accomplished without passion." },
+              { "a": "Schopenhauer", "q": "Talent hits a target no one else can hit; genius hits a target no one else can see." },
+              { "a": "Schopenhauer", "q": "Most people, rather than think, merely rearrange their prejudices." },
+              { "a": "Schopenhauer", "q": "The two enemies of human happiness are pain and boredom." },
+              { "a": "Kierkegaard", "q": "Life can only be understood backwards; but it must be lived forwards." },
+              { "a": "Kierkegaard", "q": "Anxiety is the dizziness of freedom." },
+              { "a": "Kierkegaard", "q": "The most common form of despair is not being who you are." },
+              { "a": "Marx", "q": "The philosophers have only interpreted the world; the point is to change it." },
+              { "a": "Marx", "q": "History repeats itself, first as tragedy, second as farce." },
+              { "a": "Nietzsche", "q": "He who has a why to live can bear almost any how." },
+              { "a": "Nietzsche", "q": "That which does not kill us makes us stronger." },
+              { "a": "Nietzsche", "q": "And those who were seen dancing were thought to be insane by those who could not hear the music." },
+              { "a": "Nietzsche", "q": "Without music, life would be a mistake." },
+              { "a": "William James", "q": "The greatest weapon against stress is our ability to choose one thought over another." },
+              { "a": "William James", "q": "Act as if what you do makes a difference. It does." },
+              { "a": "William James", "q": "The art of being wise is the art of knowing what to overlook." },
+              { "a": "Wittgenstein", "q": "The limits of my language mean the limits of my world." },
+              { "a": "Wittgenstein", "q": "Whereof one cannot speak, thereof one must be silent." },
+              { "a": "Wittgenstein", "q": "Philosophy is a battle against the bewitchment of our intelligence by means of language." },
+              { "a": "Russell", "q": "The whole problem with the world is that fools and fanatics are always so certain of themselves, and wiser people so full of doubts." },
+              { "a": "Russell", "q": "To fear love is to fear life, and those who fear life are already three parts dead." },
+              { "a": "Russell", "q": "The good life is one inspired by love and guided by knowledge." },
+              { "a": "Santayana", "q": "Those who cannot remember the past are condemned to repeat it." },
+              { "a": "Santayana", "q": "The world is a perpetual caricature of itself." },
+              { "a": "Camus", "q": "In the depth of winter, I finally learned that within me there lay an invincible summer." },
+              { "a": "Camus", "q": "Should I kill myself, or have a cup of coffee?" },
+              { "a": "Camus", "q": "The only way to deal with an unfree world is to become so absolutely free that your very existence is an act of rebellion." },
+              { "a": "Sartre", "q": "Man is condemned to be free." },
+              { "a": "Sartre", "q": "We are our choices." },
+              { "a": "Sartre", "q": "Freedom is what you do with what's been done to you." },
+              { "a": "Simone de Beauvoir", "q": "One is not born, but rather becomes, a woman." },
+              { "a": "Simone de Beauvoir", "q": "Change your life today. Don't gamble on the future, act now, without delay." },
+              { "a": "Hannah Arendt", "q": "The most radical revolutionary will become a conservative the day after the revolution." },
+              { "a": "Hannah Arendt", "q": "Forgiveness is the key to action and freedom." },
+              { "a": "Popper", "q": "True ignorance is not the absence of knowledge, but the refusal to acquire it." },
+              { "a": "Popper", "q": "We may become the makers of our fate when we have ceased to pose as its prophets." }
             ];
 
             var box = document.getElementById('daily-quote');
@@ -1119,6 +814,77 @@
                 box.classList.remove('is-loading');
             });
         })();
+        });
+    </script>
+
+    <!-- ===== 随机图片（直接加载图片，无跨域问题） ===== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            (function () {
+                // t.alcy.cc 是图片直链服务：直接改 <img> 的 src 就能拿到图，
+                // 不需要 fetch JSON，因此也不会出现跨域（CORS）错误。
+                var API = 'https://t.alcy.cc/mp';
+
+                var img = document.getElementById('random-img-el');
+                var status = document.getElementById('random-img-status');
+                var refreshBtn = document.getElementById('random-img-refresh');
+
+                if (!img || !status || !refreshBtn) return;
+
+                var loading = false;
+
+                function loadImage() {
+                    if (loading) return;
+                    loading = true;
+                    refreshBtn.disabled = true;
+                    refreshBtn.style.opacity = '0.6';
+                    refreshBtn.style.pointerEvents = 'none';
+
+                    // 显示加载中，并隐藏旧图
+                    status.textContent = 'Loading...';
+                    status.classList.remove('error');
+                    status.hidden = false;
+                    img.hidden = true;
+
+                    // 加时间戳防止浏览器缓存（否则 refresh 可能拿到同一张）
+                    var url = API + '?_t=' + Date.now();
+
+                    var preloader = new Image();
+                    preloader.onload = function () {
+                        img.src = url;
+                        img.alt = 'Random image from t.alcy.cc';
+                        img.hidden = false;
+                        status.hidden = true;
+                    };
+                    preloader.onerror = function () {
+                        status.textContent = 'Failed to load image.';
+                        status.classList.add('error');
+                        status.hidden = false;
+                        img.hidden = true;
+                    };
+                    preloader.src = url;
+                }
+
+                function done() {
+                    loading = false;
+                    refreshBtn.disabled = false;
+                    refreshBtn.style.opacity = '';
+                    refreshBtn.style.pointerEvents = '';
+                }
+
+                refreshBtn.addEventListener('click', function () {
+                    loadImage();
+                    // 图片 onload / onerror 之后解锁按钮
+                    var unlock = function () { done(); };
+                    img.addEventListener('load', unlock, { once: true });
+                    img.addEventListener('error', unlock, { once: true });
+                });
+
+                // 首次加载
+                loadImage();
+                img.addEventListener('load', done, { once: true });
+                img.addEventListener('error', done, { once: true });
+            })();
         });
     </script>
 </body>
