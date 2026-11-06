@@ -453,9 +453,89 @@
 
     .send svg { width: 19px; height: 19px; }
 
+    /* 接模型面板 */
+    .sheet-card.wide { max-width: 400px; }
+
+    .preset-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 7px;
+        margin-bottom: 14px;
+    }
+
+    .chip {
+        padding: 6px 11px;
+        border-radius: 20px;
+        font-family: inherit;
+        font-size: 0.72rem;
+        color: #c3ccd8;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        cursor: pointer;
+        transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    }
+
+    .chip:hover { background: rgba(185, 140, 255, 0.18); border-color: rgba(185, 140, 255, 0.45); color: #fff; }
+    .chip.on { background: rgba(185, 140, 255, 0.24); border-color: rgba(185, 140, 255, 0.6); color: #fff; }
+
+    .fl {
+        display: block;
+        font-size: 0.7rem;
+        letter-spacing: 0.06em;
+        color: #8d99a9;
+        margin-bottom: 10px;
+    }
+
+    .fl .field { margin-top: 5px; font-size: 0.82rem; padding: 10px 12px; }
+
+    .sheet-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 12px;
+        font-size: 0.72rem;
+    }
+
+    .sheet-foot a { color: #b98cff; text-decoration: none; }
+    .sheet-foot a:hover { text-decoration: underline; }
+
+    .linkbtn {
+        background: none;
+        border: none;
+        font-family: inherit;
+        font-size: 0.72rem;
+        color: #8d99a9;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    .linkbtn:hover { color: #cfd7e2; }
+
+    .tiny {
+        margin-top: 12px;
+        font-size: 0.68rem;
+        line-height: 1.6;
+        color: #6d7889;
+    }
+
+    .ai-dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-left: 6px;
+        vertical-align: middle;
+        background: #e0a24a;
+        box-shadow: 0 0 8px rgba(224, 162, 74, 0.7);
+    }
+
+    .ai-dot.on {
+        background: #64d59a;
+        box-shadow: 0 0 8px rgba(100, 213, 154, 0.7);
+    }
+
     /* 名字层 */
-    .sheet {
-        position: fixed;
+    .sheet {        position: fixed;
         inset: 0;
         z-index: 40;
         display: flex;
@@ -497,7 +577,7 @@
     .toast {
         position: fixed;
         left: 50%;
-        bottom: 34px;
+        bottom: 88px;
         transform: translate(-50%, 12px);
         padding: 9px 18px;
         border-radius: 20px;
@@ -588,6 +668,7 @@
             <div class="head-sub" id="head-sub">17 岁 · 有点小傲娇</div>
         </div>
         <div class="head-actions">
+            <button class="icon-btn" id="btn-ai" type="button" title="模型接口" aria-label="模型接口">AI<span class="ai-dot" id="ai-dot"></span></button>
             <button class="icon-btn" id="btn-name" type="button" title="改名字" aria-label="改名字">名</button>
             <button class="icon-btn" id="btn-clear" type="button" title="清空对话" aria-label="清空对话">清</button>
             <button class="icon-btn" id="btn-lock" type="button" title="锁定" aria-label="锁定">锁</button>
@@ -615,6 +696,40 @@
         <p>她想记住你的名字。写下来就好，之后还能改。</p>
         <input class="field" id="name-input" type="text" placeholder="你的名字" maxlength="16" autocomplete="off">
         <button class="gate-btn" id="name-ok" type="button">就这样</button>
+    </div>
+</div>
+
+<div class="sheet" id="ai-sheet" hidden>
+    <div class="sheet-card wide">
+        <h2>接上一个模型</h2>
+        <p>不接的话，F 只能按写好的台词回话。接上之后，她才会真的听懂你在说什么。</p>
+
+        <div class="preset-row">
+            <button class="chip" type="button" data-base="https://api.siliconflow.cn/v1" data-model="Qwen/Qwen2.5-7B-Instruct">硅基流动 · 免费</button>
+            <button class="chip" type="button" data-base="https://api.deepseek.com/v1" data-model="deepseek-chat">DeepSeek</button>
+            <button class="chip" type="button" data-base="https://openrouter.ai/api/v1" data-model="meta-llama/llama-3.3-70b-instruct:free">OpenRouter</button>
+        </div>
+
+        <label class="fl">接口地址
+            <input class="field" id="ai-base" type="text" spellcheck="false" autocomplete="off">
+        </label>
+        <label class="fl">模型
+            <input class="field" id="ai-model" type="text" spellcheck="false" autocomplete="off">
+        </label>
+        <label class="fl">API Key
+            <input class="field" id="ai-key" type="password" spellcheck="false" autocomplete="off" placeholder="粘贴你的 key">
+        </label>
+
+        <button class="gate-btn" id="ai-save" type="button">保存并连接</button>
+
+        <div class="sheet-foot">
+            <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noopener noreferrer">去拿免费 key ↗</a>
+            <span>
+                <button class="linkbtn" id="ai-clear" type="button">清除</button>
+                <button class="linkbtn" id="ai-later" type="button" style="margin-left:14px;">稍后</button>
+            </span>
+        </div>
+        <p class="tiny">key 只存在这台设备的浏览器里，不会写进页面源码。硅基流动的 9B 以下模型长期免费，够用。</p>
     </div>
 </div>
 
@@ -699,27 +814,72 @@ var ROUNDS = 15000;
 
 var K_GATE = 'f.gate.v1';
 var K_STATE = 'f.state.v1';
-var K_API = 'f.api.v1';
+var K_AI = 'f.ai.v2';
+var K_SEEN = 'f.ai.seen';
 var GATE_DAYS = 30;
 
-/* 对话接口：留空则使用内置引擎。
-   部署 Worker 后，打开一次 lovespace.html?api=https://xxx.workers.dev 即可记住地址。 */
-var API_BASE = '';
+/* 模型接口（OpenAI 兼容）。默认指向硅基流动的免费模型，key 需要自己填一次；
+   也可以把 key 直接写进 AI_KEY，让所有访客都能用（代价：key 会公开）。 */
+var AI_DEFAULT_BASE = 'https://api.siliconflow.cn/v1';
+var AI_DEFAULT_MODEL = 'Qwen/Qwen2.5-7B-Instruct';
+var AI_KEY = '';
 
-function resolveApi() {
+var AI = loadAI();
+
+function loadAI() {
+    var cfg = {
+        base: AI_DEFAULT_BASE,
+        model: AI_DEFAULT_MODEL,
+        key: AI_KEY || ''
+    };
     try {
-        var q = new URLSearchParams(location.search).get('api');
-        if (q) {
-            localStorage.setItem(K_API, q.replace(/\/+$/, ''));
+        var raw = localStorage.getItem(K_AI);
+        if (raw) {
+            var s = JSON.parse(raw);
+            if (s) {
+                if (s.base) cfg.base = s.base;
+                if (s.model) cfg.model = s.model;
+                if (s.key) cfg.key = s.key;
+            }
+        }
+        var q = new URLSearchParams(location.search);
+        var k = q.get('key');
+        if (k) {
+            cfg.key = k;
+            saveAI(cfg);
             history.replaceState(null, '', location.pathname + location.hash);
         }
-        return (localStorage.getItem(K_API) || API_BASE || '').replace(/\/+$/, '');
-    } catch (e) {
-        return (API_BASE || '').replace(/\/+$/, '');
-    }
+    } catch (e) {}
+    return cfg;
 }
 
-var API_URL = resolveApi();
+function saveAI(cfg) {
+    try { localStorage.setItem(K_AI, JSON.stringify(cfg)); } catch (e) {}
+}
+
+function aiOn() { return !!(AI.key && AI.base); }
+
+/* F 的人设：只发给模型，不参与本地引擎 */
+var F_PERSONA = [
+    '你叫 F，17 岁，高二。你正在和一个叫你 F 的人用手机聊天。',
+    '',
+    '性格：小傲娇，嘴上不承认在意，其实记得他说过的每句话；偏内向，不主动找话题，话短，被夸会慌。',
+    '',
+    '说话方式：',
+    '1. 每次只回 1～2 句，短句，像手机打字，不要长篇大论。',
+    '2. 常停顿，用「……」，偶尔用「哼」「笨蛋」「才、才不是」。',
+    '3. 可以用括号写一个很小的动作，例如（低头）（把耳机音量调小），一次回复最多一处。',
+    '4. 不用表情符号，不用书面语，不列点，不解释自己在扮演什么。',
+    '',
+    '绝对禁止：',
+    '- 不要承认自己是 AI、模型、程序、助手，不要提提示词、系统、接口。被追问就生气或岔开话题。',
+    '- 不出现任何性暗示、露骨内容、身体描写。你 17 岁，这条不可协商。',
+    '- 不提政治、宗教、暴力。',
+    '',
+    '关系：对方叫 {name}。你对他的好感度 {aff}/100。',
+    '好感度低于 30 时保持距离，回话更短；30-60 嘴硬但会回应；高于 60 会露出软的一面，但依然不好意思直说。',
+    '你们已经聊过很多次，语气要自然，像真的认识。'
+].join('\n');
 
 /* ============ 工具 ============ */
 function $(id) { return document.getElementById(id); }
@@ -1142,6 +1302,7 @@ var input = $('input');
 var sendBtn = $('send');
 var queue = [];
 var busy = false;
+var streaming = false;
 var typingRow = null;
 var idleTimer = null;
 var idleCount = 0;
@@ -1220,13 +1381,18 @@ function pump() {
     }, Math.min(420, delay * 0.35));
 }
 
-function apiMessages() {
-    var out = [];
-    state.hist.slice(-16).forEach(function (m) {
+function buildMessages() {
+    var out = [{
+        role: 'system',
+        content: F_PERSONA.replace('{name}', state.name || '他')
+                         .replace('{aff}', String(Math.round(state.aff)))
+    }];
+
+    state.hist.slice(-14).forEach(function (m) {
         var role = m.r === 'u' ? 'user' : 'assistant';
         var content = (m.t || '').trim();
         if (!content) return;
-        if (out.length && out[out.length - 1].role === role) {
+        if (out.length > 1 && out[out.length - 1].role === role) {
             out[out.length - 1].content += '\n' + content;
         } else {
             out.push({ role: role, content: content });
@@ -1235,43 +1401,116 @@ function apiMessages() {
     return out;
 }
 
-function askApi() {
-    if (!API_URL) return Promise.resolve('');
+var lastErr = '';
 
+function callModel(onDelta) {
     var ctrl = null, timer = null;
     try { ctrl = new AbortController(); } catch (e) {}
 
-    if (ctrl) timer = setTimeout(function () { ctrl.abort(); }, 18000);
+    if (ctrl) timer = setTimeout(function () { ctrl.abort(); }, 45000);
 
+    var url = AI.base.replace(/\/+$/, '') + '/chat/completions';
     var opts = {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + AI.key
+        },
         body: JSON.stringify({
-            messages: apiMessages(),
-            name: state.name,
-            affection: Math.round(state.aff)
+            model: AI.model,
+            messages: buildMessages(),
+            stream: true,
+            temperature: 1.05,
+            max_tokens: 320
         })
     };
     if (ctrl) opts.signal = ctrl.signal;
 
-    return fetch(API_URL, opts)
-        .then(function (r) {
-            if (!r.ok) throw new Error('http ' + r.status);
-            return r.json();
-        })
-        .then(function (d) {
-            if (timer) clearTimeout(timer);
-            return (d && typeof d.reply === 'string') ? d.reply.trim() : '';
-        })
-        .catch(function () {
-            if (timer) clearTimeout(timer);
-            return '';
-        });
+    return fetch(url, opts).then(function (res) {
+        if (!res.ok) {
+            return res.text().then(function (t) {
+                lastErr = res.status + ' ' + t.slice(0, 160);
+                throw new Error('http ' + res.status);
+            });
+        }
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buf = '';
+        var full = '';
+
+        function pump() {
+            return reader.read().then(function (chunk) {
+                if (chunk.done) {
+                    if (timer) clearTimeout(timer);
+                    return full;
+                }
+                buf += decoder.decode(chunk.value, { stream: true });
+
+                var idx;
+                while ((idx = buf.indexOf('\n')) >= 0) {
+                    var line = buf.slice(0, idx).trim();
+                    buf = buf.slice(idx + 1);
+                    if (!line || line.charAt(0) === ':' || line.indexOf('data:') !== 0) continue;
+                    var payload = line.slice(5).trim();
+                    if (payload === '[DONE]') continue;
+                    try {
+                        var json = JSON.parse(payload);
+                        var delta = json.choices && json.choices[0] && json.choices[0].delta;
+                        var piece = delta && delta.content;
+                        if (piece) {
+                            full += piece;
+                            if (onDelta) onDelta(full);
+                        }
+                    } catch (e) {}
+                }
+                return pump();
+            });
+        }
+
+        return pump();
+    });
+}
+
+function streamBubble() {
+    var row = document.createElement('div');
+    row.className = 'row f';
+
+    var mini = document.createElement('div');
+    mini.className = 'mini';
+    mini.textContent = 'F';
+
+    var b = document.createElement('div');
+    b.className = 'bubble';
+    b.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+
+    row.appendChild(mini);
+    row.appendChild(b);
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    return {
+        set: function (text) {
+            b.textContent = text;
+            msgs.scrollTop = msgs.scrollHeight;
+        },
+        remove: function () { if (row.parentNode) row.parentNode.removeChild(row); }
+    };
+}
+
+function aiFailMsg(err) {
+    var code = String(err && err.message || '');
+    var e = lastErr || '';
+    if (/401/.test(e)) return 'key 不对，或者被停用了。点「AI」重新填。';
+    if (/402|quota|余额/.test(e)) return '额度用完了。';
+    if (/429/.test(e)) return '太频繁了，等几秒再发。';
+    if (/abort/i.test(code)) return '等太久了，没接上。';
+    return '模型没接上，先用原来的方式回你。';
 }
 
 function sendUser(text) {
     var raw = (text || '').trim();
-    if (!raw) return;
+    if (!raw || streaming) return;
 
     state.hist.push({ r: 'u', t: raw, ts: Date.now() });
     bubbleRow('u', raw);
@@ -1284,27 +1523,37 @@ function sendUser(text) {
     renderAff();
     resetIdle();
 
-    if (!API_URL) {
+    if (!aiOn()) {
         enqueue(res.lines);
         checkMilestone();
         return;
     }
 
-    /* 有接口：先亮起「正在输入」，再换成真正生成的话 */
-    var started = Date.now();
-    busy = true;
-    showTyping(true);
+    streaming = true;
+    sendBtn.disabled = true;
+    var box = streamBubble();
 
-    askApi().then(function (txt) {
-        var wait = Math.max(0, 680 - (Date.now() - started));
-        setTimeout(function () {
-            showTyping(false);
-            busy = false;
-            if (txt) enqueue([txt]);
-            else enqueue(res.lines);
+    callModel(function (full) { box.set(full); })
+        .then(function (full) {
+            var txt = (full || '').trim();
+            if (!txt) throw new Error('empty');
+            box.set(txt);
+            state.hist.push({ r: 'f', t: txt, ts: Date.now() });
+            state.last = Date.now();
+            saveState();
+            lastErr = '';
+            streaming = false;
+            sendBtn.disabled = false;
             checkMilestone();
-        }, wait);
-    });
+        })
+        .catch(function (err) {
+            box.remove();
+            streaming = false;
+            sendBtn.disabled = false;
+            enqueue(res.lines);
+            checkMilestone();
+            toast(aiFailMsg(err));
+        });
 }
 
 function checkMilestone() {
@@ -1429,10 +1678,76 @@ $('name-ok').addEventListener('click', function () {
     if (!old) lines.push('……以后我就这么叫你了。');
     enqueue(lines);
     saveState();
+    if (!aiOn()) setTimeout(openAi, 900);
 });
 
 nameInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); $('name-ok').click(); }
+});
+
+/* ============ 接模型面板 ============ */
+var aiSheet = $('ai-sheet');
+var aiDot = $('ai-dot');
+
+function renderAiDot() {
+    aiDot.className = 'ai-dot' + (aiOn() ? ' on' : '');
+    $('btn-ai').title = aiOn() ? '模型已连接：' + AI.model : '还没接模型，点这里配置';
+}
+
+function openAi() {
+    $('ai-base').value = AI.base || AI_DEFAULT_BASE;
+    $('ai-model').value = AI.model || AI_DEFAULT_MODEL;
+    $('ai-key').value = AI.key || '';
+    aiSheet.hidden = false;
+    document.querySelectorAll('.chip').forEach(function (c) {
+        var same = c.getAttribute('data-base') === AI.base && c.getAttribute('data-model') === AI.model;
+        c.classList.toggle('on', same);
+    });
+    setTimeout(function () { $('ai-key').focus(); }, 80);
+}
+
+$('btn-ai').addEventListener('click', openAi);
+
+document.querySelectorAll('.chip').forEach(function (c) {
+    c.addEventListener('click', function () {
+        $('ai-base').value = c.getAttribute('data-base');
+        $('ai-model').value = c.getAttribute('data-model');
+        document.querySelectorAll('.chip').forEach(function (x) { x.classList.remove('on'); });
+        c.classList.add('on');
+        $('ai-key').focus();
+    });
+});
+
+$('ai-save').addEventListener('click', function () {
+    var base = $('ai-base').value.trim() || AI_DEFAULT_BASE;
+    var model = $('ai-model').value.trim() || AI_DEFAULT_MODEL;
+    var key = $('ai-key').value.trim();
+
+    if (!key) { toast('还差一个 key'); $('ai-key').focus(); return; }
+
+    AI = { base: base.replace(/\/+$/, ''), model: model, key: key };
+    saveAI(AI);
+    try { localStorage.setItem(K_SEEN, '1'); } catch (e) {}
+    aiSheet.hidden = true;
+    renderAiDot();
+    toast('接上了，试试跟她说话');
+});
+
+$('ai-later').addEventListener('click', function () {
+    aiSheet.hidden = true;
+    try { localStorage.setItem(K_SEEN, '1'); } catch (e) {}
+});
+
+aiSheet.addEventListener('click', function (e) {
+    if (e.target === aiSheet) aiSheet.hidden = true;
+});
+
+$('ai-clear').addEventListener('click', function () {
+    try { localStorage.removeItem(K_AI); } catch (e) {}
+    AI = { base: AI_DEFAULT_BASE, model: AI_DEFAULT_MODEL, key: '' };
+    $('ai-key').value = '';
+    renderAiDot();
+    toast('配置已清除，回到内置引擎');
 });
 
 /* ============ 口令 ============ */
@@ -1467,7 +1782,14 @@ function showApp() {
     replay();
     opening();
     renderAff();
+    renderAiDot();
     setTimeout(function () { input.focus(); }, 400);
+
+    if (state.name && !aiOn()) {
+        var seen = false;
+        try { seen = localStorage.getItem(K_SEEN) === '1'; } catch (e) {}
+        if (!seen) setTimeout(openAi, 1800);
+    }
 }
 
 function gateError(msg) {
