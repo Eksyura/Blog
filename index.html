@@ -409,8 +409,42 @@
             border-color: rgba(255, 255, 255, 0.4);
         }
 
-        /* ---------- 随机图片卡片 ---------- */
-        .random-img-wrap {
+        /* ---------- F 入口 ---------- */
+        .f-entry {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .f-avatar {
+            flex: 0 0 auto;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: #fff;
+            letter-spacing: 0.02em;
+            background: linear-gradient(140deg, #ff9ec4 0%, #b98cff 55%, #6f8dff 100%);
+            box-shadow: 0 6px 18px rgba(180, 120, 255, 0.32);
+        }
+
+        .f-entry .download-btn {
+            flex: 1;
+            justify-content: center;
+            background: linear-gradient(135deg, #b98cff 0%, #6f8dff 100%);
+            box-shadow: 0 4px 14px rgba(120, 110, 255, 0.32);
+        }
+
+        .f-entry .download-btn:hover {
+            box-shadow: 0 8px 20px rgba(120, 110, 255, 0.45);
+        }
+
+        /* ---------- 随机图片卡片 ---------- */        .random-img-wrap {
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 10;
@@ -622,7 +656,18 @@
                 </ul>
             </div>
 
-            <!-- 卡片3：联系方式 -->
+            <!-- 卡片3：F -->
+            <div class="glass-card">
+                <h3>F</h3>
+                <p>有个房间，只留给一个人。</p>
+                <div class="f-entry">
+                    <div class="f-avatar" aria-hidden="true">F</div>
+                    <a class="download-btn" href="./lovespace.html">Enter</a>
+                </div>
+                <p class="download-note">需要口令。</p>
+            </div>
+
+            <!-- 卡片4：联系方式 -->
             <div class="glass-card">
                 <h3>contact with me</h3>
                 <p style="margin-bottom:6px;">Wechat</p>
