@@ -1764,8 +1764,11 @@ var F_AI_READY = false;      // 口令门开着才允许走模型
 var F_L7_LAST = 0;           // LLM7 匿名层 1 req/s，前端自行节流
 var K_L7_BLOCK = 'f.l7block.v1';
 var lastRetryAfter = 0;
-/* 每一级通道的时间预算：l 15s 内拿不到完整回复就换 o，o 再 15s 或额度耗尽就交给 f。 */
+/* 每一级通道「等第一个字」的预算：l 15s 没出字就换 o，o 再 15s 或额度耗尽就交给 f。 */
 var F_BUDGET_MS = 15000;
+/* 一旦模型已经开始输出，就不允许别的通道把它截断；给足 30s 让它把话说完，
+   只有说了 30s 还没收尾才允许 abort 换通道。 */
+var F_OUTPUT_GRACE_MS = 30000;
 
 /* LLM7 匿名层按 IP 共享日配额，被打满时返回 retry_after（可能长达一天）。
    记一个冷却时间，期间直接走 OpenRouter，省掉每次必败的等待。 */
@@ -2415,6 +2418,7 @@ async function streamChat(url, headers, body, onDelta, timeoutMs) {
     var ctrl = new AbortController();
     var budget = Math.max(1, Math.min(timeoutMs || 45000, 45000));
     var timer = setTimeout(function () { ctrl.abort(); }, budget);
+    var started = false;    // 是否已经吐出第一个字
     var full = '';
     var shown = '';
 
@@ -2460,6 +2464,13 @@ async function streamChat(url, headers, body, onDelta, timeoutMs) {
                     var json = JSON.parse(payload);
                     var delta = json.choices && json.choices[0] && json.choices[0].delta;
                     if (!delta || !delta.content) continue;
+                    /* 已经开始说话了：撤掉「等首字」的 15s 倒计时，改给 30s 宽限，
+                       期间任何别的模型都不许把它截断。 */
+                    if (!started) {
+                        started = true;
+                        clearTimeout(timer);
+                        timer = setTimeout(function () { ctrl.abort(); }, F_OUTPUT_GRACE_MS);
+                    }
                     full += delta.content;
                     var now = stripThink(full);
                     if (now.trim() && now !== shown) {
@@ -2478,8 +2489,9 @@ async function streamChat(url, headers, body, onDelta, timeoutMs) {
     }
 }
 
-/* 逐级降级：l 优先(15s 预算) → o(15s 预算 / 额度耗尽) → 抛错交给本地台词 f。
-   两级共用同一份 messages；超时立刻 abort 并清掉半截流式输出，不让你干等。 */
+/* 逐级降级：l 优先(15s 内没出字就换) → o(同样 15s / 额度耗尽) → 抛错交给本地台词 f。
+   两级共用同一份 messages。模型一旦开始输出，由 streamChat 给 30s 宽限把话说完，
+   不会被这里的通道预算截断；只有等首字超时或宽限耗尽才 abort 并清掉半截输出。 */
 async function callModel(onDelta) {
     var payload = {
         messages: buildMessages(),
