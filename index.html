@@ -1769,17 +1769,22 @@ var F_BUDGET_MS = 15000;
 /* 一旦模型已经开始输出，就不允许别的通道把它截断；给足 30s 让它把话说完，
    只有说了 30s 还没收尾才允许 abort 换通道。 */
 var F_OUTPUT_GRACE_MS = 30000;
+/* l 被限流后不再整体跳过，只把「等首字」预算缩到这个值做快速探测，仍尽量优先 l。 */
+var F_L7_COOL_MS = 4000;
+/* l 冷却封顶 10 分钟：即使日额度被打满，最多 10 分钟后就再试一次 l。 */
+var F_L7_COOL_MAX_S = 600;
 
 /* LLM7 匿名层按 IP 共享日配额，被打满时返回 retry_after（可能长达一天）。
-   记一个冷却时间，期间直接走 OpenRouter，省掉每次必败的等待。 */
+   冷却只缩短 l 的「等首字」预算做快速探测，不再整体跳过 l；封顶 10 分钟。 */
 function l7Blocked() {
     try {
         var v = parseInt(localStorage.getItem(K_L7_BLOCK) || '0', 10);
-        return v > Date.now() ? v : 0;
+        if (v > Date.now()) return Math.min(v, Date.now() + F_L7_COOL_MAX_S * 1000);
+        return 0;
     } catch (e) { return 0; }
 }
 function setL7Block(sec) {
-    var until = Date.now() + Math.min(sec, 3600) * 1000;
+    var until = Date.now() + Math.min(sec, F_L7_COOL_MAX_S) * 1000;
     try { localStorage.setItem(K_L7_BLOCK, String(until)); } catch (e) {}
     return until;
 }
@@ -2501,42 +2506,49 @@ async function callModel(onDelta) {
     };
     var lastE = null;
 
-    /* ---- 第一级：LLM7（l）---- */
-    if (Date.now() >= F_L7_BLOCK_UNTIL) {
-        var lDeadline = Date.now() + F_BUDGET_MS;
-        lastRetryAfter = 0;
+    /* ---- 第一级：LLM7（l），尽量优先、尽量多试 ---- */
+    var cooling = Date.now() < F_L7_BLOCK_UNTIL;
+    var lBudget = cooling ? F_L7_COOL_MS : F_BUDGET_MS;
+    var lDeadline = Date.now() + lBudget;
+    lastRetryAfter = 0;
 
-        /* 匿名层限制 1 次/秒，节流也计入这 15 秒预算 */
+    /* 匿名层 1 req/s 节流；冷却期的快速探测不节流，省得白等 */
+    if (!cooling) {
         var wait = 1150 - (Date.now() - F_L7_LAST);
         if (wait > 0) {
             await new Promise(function (r) {
                 setTimeout(r, Math.min(wait, Math.max(0, lDeadline - Date.now())));
             });
         }
-        F_L7_LAST = Date.now();
+    }
+    F_L7_LAST = Date.now();
 
-        for (var i = 0; i < F_L7_MODELS.length; i++) {
-            var lRemain = lDeadline - Date.now();
-            if (lRemain <= 0) { lastE = new Error('l budget exceeded'); break; }
-            try {
-                var body = Object.assign({}, payload, { model: F_L7_MODELS[i] });
-                var t = await streamChat(
-                    F_L7_URL, { 'Content-Type': 'application/json' }, body, onDelta, lRemain
-                );
-                return { text: t, src: 'l' };
-            } catch (e) {
-                lastE = e;
-                lastErr = String((e && (e.code || e.message)) || '');
-                if (onDelta) onDelta('');
-                if (/429/.test(lastErr)) {
-                    if (lastRetryAfter > 60) F_L7_BLOCK_UNTIL = setL7Block(lastRetryAfter);
-                    break;   // 匿名层限流，别再撞第二个模型
-                }
+    for (var i = 0; i < F_L7_MODELS.length; i++) {
+        var lRemain = lDeadline - Date.now();
+        if (lRemain <= 0) { lastE = new Error('l budget exceeded'); break; }
+        try {
+            var body = Object.assign({}, payload, { model: F_L7_MODELS[i] });
+            var t = await streamChat(
+                F_L7_URL, { 'Content-Type': 'application/json' }, body, onDelta, lRemain
+            );
+            /* l 通了：清掉冷却，下次恢复满额 15s 预算 */
+            F_L7_BLOCK_UNTIL = 0;
+            try { localStorage.removeItem(K_L7_BLOCK); } catch (e) {}
+            return { text: t, src: 'l' };
+        } catch (e) {
+            lastE = e;
+            lastErr = String((e && (e.code || e.message)) || '');
+            if (onDelta) onDelta('');
+            if (/429/.test(lastErr)) {
+                /* 接口级限流，换模型也没用；记一次短冷却(封顶 10min)后放弃 l */
+                if (lastRetryAfter > 0) F_L7_BLOCK_UNTIL = setL7Block(lastRetryAfter);
+                break;
             }
+            /* 非 429：换下一个 l 模型再试 */
         }
     }
 
-    /* ---- 第二级：OpenRouter（o）---- */
+    /* ---- 第二级：OpenRouter（o），也尽量多试 ---- */
     if (F_API_KEY) {
         var oDeadline = Date.now() + F_BUDGET_MS;
         for (var j = 0; j < F_MODELS.length; j++) {
@@ -2553,8 +2565,9 @@ async function callModel(onDelta) {
                 lastE = e2;
                 lastErr = String((e2 && (e2.code || e2.message)) || '');
                 if (onDelta) onDelta('');
-                /* 额度/限流：不必再试下一个模型，直接交给 f */
-                if (/402|429|quota|credit|limit/i.test(lastErr)) break;
+                /* 账户级额度耗尽(402/quota/credit/limit)才放弃；
+                   model 级 429 换下一个 o 模型再试 */
+                if (/402|quota|credit|limit/i.test(lastErr)) break;
             }
         }
     }
