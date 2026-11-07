@@ -1636,7 +1636,6 @@
         });
     </script>
 
-    <script src="./vendor/workbuddy-cloud-sdk.js"></script>
     <script>
 (function () {
     var btn = document.getElementById('f-open');
@@ -1729,27 +1728,53 @@ var K_GATE = 'f.gate.v1';
 var K_STATE = 'f.state.v1';
 var GATE_DAYS = 30;
 
-/* 模型：WorkBuddy 云服务，免密钥，浏览器直连 */
-var F_ENDPOINT = 'https://f-chat.app.workbuddy.host';
-var F_PK = 'wbpk_DRxybxiDv2n3qz1VLxFATm_H0Gk3TTPlXtBIsqBjtnG9651bAspe5at';
-/* 只用 0 credits 的模型：hy4free 主用（首字 3-5s），hy3 兜底（首字 6-10s）。
-   两者都不消耗额度，坏处是比 deepseek 慢几秒。 */
-var F_MODELS = ['hy4free', 'hy3'];
+/* 模型：OpenRouter 免费模型（OpenAI 兼容，浏览器直连）。
+   key 用口令派生密钥 AES-GCM 加密——页面/仓库里只有密文，
+   输入正确口令后在浏览器本地解密，才拿到 key。 */
+var F_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+var F_KEY_ENC = {
+    salt: '08223322f61b910edde39b09c06a747c',
+    iv: '8a87329dc4e79478ce720939',
+    ct: 'f066cd499c1208b47968101034eef2ab777d4540cece731de1a05cfbe23097aba5551006c4a4d73e62633b81db9930110270bd5d58d7916ee82dcc9e4c559a57994c6df0d4f3c4c3ae8d1a1655eb2eb76e96dd0b6720eac360',
+    iter: 150000
+};
+/* 主用 flint（首字约 2.4s），兜底 nemotron-ultra（首字约 3.7s）。 */
+var F_MODELS = ['recursive/flint-v1.0:free', 'nvidia/nemotron-3-ultra-550b-a55b:free'];
 
-var F_CLOUD = null;
-function fCloud() {
-    if (F_CLOUD) return F_CLOUD;
-    if (!window.WorkBuddyCloud) return null;
-    try {
-        F_CLOUD = window.WorkBuddyCloud.createWorkBuddyCloud({
-            endpoint: F_ENDPOINT,
-            publishableKey: F_PK
-        });
-    } catch (e) { return null; }
-    return F_CLOUD;
+var F_API_KEY = '';
+var K_KEY = 'f.key.v1';
+
+function aiOn() { return !!F_API_KEY; }
+
+function h2b(hex) {
+    var b = new Uint8Array(hex.length / 2);
+    for (var i = 0; i < b.length; i++) b[i] = parseInt(hex.substr(i * 2, 2), 16);
+    return b;
 }
 
-function aiOn() { return !!fCloud(); }
+/* 用口令派生 AES 密钥，解密出 OpenRouter key。只有正确口令能解。 */
+async function unlockKey(pw) {
+    try {
+        if (!(window.crypto && window.crypto.subtle)) return '';
+        var enc = new TextEncoder();
+        var base = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveKey']);
+        var aes = await crypto.subtle.deriveKey(
+            { name: 'PBKDF2', salt: h2b(F_KEY_ENC.salt), iterations: F_KEY_ENC.iter, hash: 'SHA-256' },
+            base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']
+        );
+        var pt = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: h2b(F_KEY_ENC.iv) }, aes, h2b(F_KEY_ENC.ct)
+        );
+        return new TextDecoder().decode(pt);
+    } catch (e) { return ''; }
+}
+
+function loadKey() {
+    try { return localStorage.getItem(K_KEY) || ''; } catch (e) { return ''; }
+}
+function saveKey(k) {
+    try { if (k) localStorage.setItem(K_KEY, k); else localStorage.removeItem(K_KEY); } catch (e) {}
+}
 
 /* F 的人设：只发给模型，不参与本地引擎 */
 var F_PERSONA = [
@@ -2329,35 +2354,70 @@ function stripThink(s) {
 }
 
 async function callModel(onDelta) {
-    var cloud = fCloud();
-    if (!cloud) throw new Error('sdk');
+    if (!aiOn()) throw new Error('no-key');
 
     var lastE = null;
 
     for (var i = 0; i < F_MODELS.length; i++) {
         var ctrl = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, 40000);
+        var timer = setTimeout(function () { ctrl.abort(); }, 45000);
         var full = '';
         var shown = '';
 
         try {
-            var stream = await cloud.llm.chat.completions.create({
-                model: F_MODELS[i],
-                messages: buildMessages(),
-                stream: true,
-                temperature: 1.05,
+            var res = await fetch(F_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + F_API_KEY
+                },
+                body: JSON.stringify({
+                    model: F_MODELS[i],
+                    messages: buildMessages(),
+                    stream: true,
+                    temperature: 1.05,
+                    max_tokens: 320
+                }),
                 signal: ctrl.signal
             });
-            for await (var chunk of stream) {
-                var delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
-                if (!delta || !delta.content) continue;
-                full += delta.content;
-                var now = stripThink(full);
-                if (now.trim() && now !== shown) {
-                    shown = now;
-                    if (onDelta) onDelta(now);
+
+            if (!res.ok) {
+                var txt = '';
+                try { txt = await res.text(); } catch (e) {}
+                lastErr = res.status + ' ' + txt.slice(0, 160);
+                throw new Error('http ' + res.status);
+            }
+
+            var reader = res.body.getReader();
+            var decoder = new TextDecoder();
+            var buf = '';
+
+            while (true) {
+                var chunk = await reader.read();
+                if (chunk.done) break;
+                buf += decoder.decode(chunk.value, { stream: true });
+
+                var idx;
+                while ((idx = buf.indexOf('\n')) >= 0) {
+                    var line = buf.slice(0, idx).trim();
+                    buf = buf.slice(idx + 1);
+                    if (!line || line.indexOf('data:') !== 0) continue;
+                    var payload = line.slice(5).trim();
+                    if (payload === '[DONE]') continue;
+                    try {
+                        var json = JSON.parse(payload);
+                        var delta = json.choices && json.choices[0] && json.choices[0].delta;
+                        if (!delta || !delta.content) continue;
+                        full += delta.content;
+                        var now = stripThink(full);
+                        if (now.trim() && now !== shown) {
+                            shown = now;
+                            if (onDelta) onDelta(now);
+                        }
+                    } catch (e) {}
                 }
             }
+
             clearTimeout(timer);
             var clean = stripThink(full).trim();
             if (clean) return clean;
@@ -2402,6 +2462,7 @@ function streamBubble() {
 function aiFailMsg(err) {
     var code = String((err && (err.code || err.message)) || '') + ' ' + lastErr;
     if (/abort/i.test(code)) return '等太久了，没接上。';
+    if (/401|unauthor/i.test(code)) return '接口 key 不对，先按原来的方式回你。';
     if (/quota|credit|limit|429/i.test(code)) return '有点挤，先按原来的方式回你。';
     return '模型没接上，先用原来的方式回你。';
 }
@@ -2637,7 +2698,11 @@ function tryUnlock(pw) {
             setUnlocked();
             failCount = 0;
             gateErr.classList.remove('show');
-            showApp();
+            unlockKey(pw).then(function (k) {
+                F_API_KEY = k || '';
+                saveKey(F_API_KEY);
+                showApp();
+            });
         } else {
             failCount++;
             var left = 5 - failCount;
@@ -2710,6 +2775,8 @@ $('btn-clear').addEventListener('click', function () {
 
 $('btn-lock').addEventListener('click', function () {
     try { localStorage.removeItem(K_GATE); } catch (e) {}
+    F_API_KEY = '';
+    saveKey('');
     $('app').hidden = true;
     gate.hidden = false;
     gateInput.value = '';
@@ -2744,6 +2811,7 @@ function openRoom() {
     if (!fReady) { fReady = true; syncState(); }
 
     if (unlocked()) {
+        F_API_KEY = loadKey();
         showApp();
     } else {
         $('app').hidden = true;
