@@ -1764,6 +1764,8 @@ var F_AI_READY = false;      // 口令门开着才允许走模型
 var F_L7_LAST = 0;           // LLM7 匿名层 1 req/s，前端自行节流
 var K_L7_BLOCK = 'f.l7block.v1';
 var lastRetryAfter = 0;
+/* 每一级通道的时间预算：l 15s 内拿不到完整回复就换 o，o 再 15s 或额度耗尽就交给 f。 */
+var F_BUDGET_MS = 15000;
 
 /* LLM7 匿名层按 IP 共享日配额，被打满时返回 retry_after（可能长达一天）。
    记一个冷却时间，期间直接走 OpenRouter，省掉每次必败的等待。 */
@@ -2409,9 +2411,10 @@ function stripThink(s) {
 }
 
 /* 通用 SSE 解析：只取 delta.content，忽略 reasoning / 思考块。 */
-async function streamChat(url, headers, body, onDelta) {
+async function streamChat(url, headers, body, onDelta, timeoutMs) {
     var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, 45000);
+    var budget = Math.max(1, Math.min(timeoutMs || 45000, 45000));
+    var timer = setTimeout(function () { ctrl.abort(); }, budget);
     var full = '';
     var shown = '';
 
@@ -2475,7 +2478,8 @@ async function streamChat(url, headers, body, onDelta) {
     }
 }
 
-/* 主通道 LLM7.io（零 key、额度大）；429 / 超时 / 出错再退 OpenRouter。 */
+/* 逐级降级：l 优先(15s 预算) → o(15s 预算 / 额度耗尽) → 抛错交给本地台词 f。
+   两级共用同一份 messages；超时立刻 abort 并清掉半截流式输出，不让你干等。 */
 async function callModel(onDelta) {
     var payload = {
         messages: buildMessages(),
@@ -2485,18 +2489,27 @@ async function callModel(onDelta) {
     };
     var lastE = null;
 
+    /* ---- 第一级：LLM7（l）---- */
     if (Date.now() >= F_L7_BLOCK_UNTIL) {
+        var lDeadline = Date.now() + F_BUDGET_MS;
         lastRetryAfter = 0;
-        /* 匿名层限制 1 次/秒，前端自己节流 */
+
+        /* 匿名层限制 1 次/秒，节流也计入这 15 秒预算 */
         var wait = 1150 - (Date.now() - F_L7_LAST);
-        if (wait > 0) await new Promise(function (r) { setTimeout(r, wait); });
+        if (wait > 0) {
+            await new Promise(function (r) {
+                setTimeout(r, Math.min(wait, Math.max(0, lDeadline - Date.now())));
+            });
+        }
         F_L7_LAST = Date.now();
 
         for (var i = 0; i < F_L7_MODELS.length; i++) {
+            var lRemain = lDeadline - Date.now();
+            if (lRemain <= 0) { lastE = new Error('l budget exceeded'); break; }
             try {
                 var body = Object.assign({}, payload, { model: F_L7_MODELS[i] });
                 var t = await streamChat(
-                    F_L7_URL, { 'Content-Type': 'application/json' }, body, onDelta
+                    F_L7_URL, { 'Content-Type': 'application/json' }, body, onDelta, lRemain
                 );
                 return { text: t, src: 'l' };
             } catch (e) {
@@ -2511,19 +2524,25 @@ async function callModel(onDelta) {
         }
     }
 
+    /* ---- 第二级：OpenRouter（o）---- */
     if (F_API_KEY) {
+        var oDeadline = Date.now() + F_BUDGET_MS;
         for (var j = 0; j < F_MODELS.length; j++) {
+            var oRemain = oDeadline - Date.now();
+            if (oRemain <= 0) { lastE = new Error('o budget exceeded'); break; }
             try {
                 var body2 = Object.assign({}, payload, { model: F_MODELS[j] });
                 var t2 = await streamChat(F_API_URL, {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + F_API_KEY
-                }, body2, onDelta);
+                }, body2, onDelta, oRemain);
                 return { text: t2, src: 'o' };
             } catch (e2) {
                 lastE = e2;
                 lastErr = String((e2 && (e2.code || e2.message)) || '');
                 if (onDelta) onDelta('');
+                /* 额度/限流：不必再试下一个模型，直接交给 f */
+                if (/402|429|quota|credit|limit/i.test(lastErr)) break;
             }
         }
     }
