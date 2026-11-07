@@ -871,6 +871,21 @@
 
     .row .bubble.mono { color: #c3ccd8; font-size: 0.86rem; }
 
+    /* 每条回复下方的来源角标：o=OpenRouter l=LLM7 f=本地固定台词 */
+    .row .bwrap { display: flex; flex-direction: column; min-width: 0; }
+    .row.f .mini { margin-bottom: 13px; }
+    .row .src {
+        align-self: flex-start;
+        margin: 3px 0 0 6px;
+        font-size: 0.6rem;
+        line-height: 1;
+        letter-spacing: 0.1em;
+        color: rgba(255, 255, 255, 0.3);
+        user-select: none;
+    }
+    .row .src.src-l { color: rgba(160, 220, 255, 0.45); }
+    .row .src.src-o { color: rgba(255, 205, 150, 0.45); }
+
     .typing { display: inline-flex; gap: 4px; align-items: center; padding: 3px 2px; }
 
     .typing i {
@@ -1728,9 +1743,11 @@ var K_GATE = 'f.gate.v1';
 var K_STATE = 'f.state.v1';
 var GATE_DAYS = 30;
 
-/* 模型：OpenRouter 免费模型（OpenAI 兼容，浏览器直连）。
-   key 用口令派生密钥 AES-GCM 加密——页面/仓库里只有密文，
+/* 双通道：LLM7.io 匿名免费（零 key，主用）+ OpenRouter 免费档（兜底）。
+   OpenRouter 的 key 用口令派生密钥 AES-GCM 加密——页面/仓库里只有密文，
    输入正确口令后在浏览器本地解密，才拿到 key。 */
+var F_L7_URL = 'https://api.llm7.io/v1/chat/completions';
+var F_L7_MODELS = ['gpt-oss:20b', 'mistral-Nemo-Instruct-2407'];
 var F_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 var F_KEY_ENC = {
     salt: '08223322f61b910edde39b09c06a747c',
@@ -1738,13 +1755,32 @@ var F_KEY_ENC = {
     ct: 'f066cd499c1208b47968101034eef2ab777d4540cece731de1a05cfbe23097aba5551006c4a4d73e62633b81db9930110270bd5d58d7916ee82dcc9e4c559a57994c6df0d4f3c4c3ae8d1a1655eb2eb76e96dd0b6720eac360',
     iter: 150000
 };
-/* 主用 flint（首字约 2.4s），兜底 nemotron-ultra（首字约 3.7s）。 */
+/* OpenRouter 兜底：主用 flint，再退 nemotron-ultra。 */
 var F_MODELS = ['recursive/flint-v1.0:free', 'nvidia/nemotron-3-ultra-550b-a55b:free'];
 
 var F_API_KEY = '';
 var K_KEY = 'f.key.v1';
+var F_AI_READY = false;      // 口令门开着才允许走模型
+var F_L7_LAST = 0;           // LLM7 匿名层 1 req/s，前端自行节流
+var K_L7_BLOCK = 'f.l7block.v1';
+var lastRetryAfter = 0;
 
-function aiOn() { return !!F_API_KEY; }
+/* LLM7 匿名层按 IP 共享日配额，被打满时返回 retry_after（可能长达一天）。
+   记一个冷却时间，期间直接走 OpenRouter，省掉每次必败的等待。 */
+function l7Blocked() {
+    try {
+        var v = parseInt(localStorage.getItem(K_L7_BLOCK) || '0', 10);
+        return v > Date.now() ? v : 0;
+    } catch (e) { return 0; }
+}
+function setL7Block(sec) {
+    var until = Date.now() + Math.min(sec, 3600) * 1000;
+    try { localStorage.setItem(K_L7_BLOCK, String(until)); } catch (e) {}
+    return until;
+}
+var F_L7_BLOCK_UNTIL = l7Blocked();
+
+function aiOn() { return F_AI_READY; }
 
 function h2b(hex) {
     var b = new Uint8Array(hex.length / 2);
@@ -2224,7 +2260,16 @@ var typingRow = null;
 var idleTimer = null;
 var idleCount = 0;
 
-function bubbleRow(role, text) {
+function srcTag(src) {
+    var s = (src === 'o' || src === 'l') ? src : 'f';
+    var el = document.createElement('span');
+    el.className = 'src src-' + s;
+    el.textContent = s;
+    el.title = s === 'o' ? 'OpenRouter' : (s === 'l' ? 'LLM7.io' : '本地固定台词');
+    return el;
+}
+
+function bubbleRow(role, text, src) {
     var row = document.createElement('div');
     row.className = 'row ' + role;
 
@@ -2238,7 +2283,16 @@ function bubbleRow(role, text) {
     var b = document.createElement('div');
     b.className = 'bubble';
     b.textContent = text;
-    row.appendChild(b);
+
+    if (role === 'f') {
+        var wrap = document.createElement('div');
+        wrap.className = 'bwrap';
+        wrap.appendChild(b);
+        wrap.appendChild(srcTag(src));
+        row.appendChild(wrap);
+    } else {
+        row.appendChild(b);
+    }
 
     msgs.appendChild(row);
     msgs.scrollTop = msgs.scrollHeight;
@@ -2266,9 +2320,10 @@ function showTyping(on) {
     }
 }
 
-function pushF(text, silent) {
-    state.hist.push({ r: 'f', t: text, ts: Date.now() });
-    bubbleRow('f', text);
+function pushF(text, silent, src) {
+    var s = src || 'f';
+    state.hist.push({ r: 'f', t: text, ts: Date.now(), s: s });
+    bubbleRow('f', text, s);
     state.last = Date.now();
     if (!silent) saveState();
 }
@@ -2353,80 +2408,123 @@ function stripThink(s) {
     return out.replace(/^[\s>]+/, '');
 }
 
-async function callModel(onDelta) {
-    if (!aiOn()) throw new Error('no-key');
+/* 通用 SSE 解析：只取 delta.content，忽略 reasoning / 思考块。 */
+async function streamChat(url, headers, body, onDelta) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, 45000);
+    var full = '';
+    var shown = '';
 
+    try {
+        var res = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(body),
+            signal: ctrl.signal
+        });
+
+        if (!res.ok) {
+            var txt = '';
+            try { txt = await res.text(); } catch (e) {}
+            lastErr = res.status + ' ' + txt.slice(0, 160);
+            lastRetryAfter = 0;
+            var ra = /"retry_after"\s*:\s*(\d+)/.exec(txt);
+            if (ra) lastRetryAfter = parseInt(ra[1], 10);
+            else {
+                var hdr = parseInt(res.headers.get('Retry-After') || '0', 10);
+                if (!isNaN(hdr)) lastRetryAfter = hdr;
+            }
+            throw new Error('http ' + res.status);
+        }
+
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buf = '';
+
+        while (true) {
+            var chunk = await reader.read();
+            if (chunk.done) break;
+            buf += decoder.decode(chunk.value, { stream: true });
+
+            var idx;
+            while ((idx = buf.indexOf('\n')) >= 0) {
+                var line = buf.slice(0, idx).trim();
+                buf = buf.slice(idx + 1);
+                if (!line || line.indexOf('data:') !== 0) continue;
+                var payload = line.slice(5).trim();
+                if (payload === '[DONE]') continue;
+                try {
+                    var json = JSON.parse(payload);
+                    var delta = json.choices && json.choices[0] && json.choices[0].delta;
+                    if (!delta || !delta.content) continue;
+                    full += delta.content;
+                    var now = stripThink(full);
+                    if (now.trim() && now !== shown) {
+                        shown = now;
+                        if (onDelta) onDelta(now);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        var clean = stripThink(full).trim();
+        if (!clean) throw new Error('empty');
+        return clean;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/* 主通道 LLM7.io（零 key、额度大）；429 / 超时 / 出错再退 OpenRouter。 */
+async function callModel(onDelta) {
+    var payload = {
+        messages: buildMessages(),
+        stream: true,
+        temperature: 1.05,
+        max_tokens: 320
+    };
     var lastE = null;
 
-    for (var i = 0; i < F_MODELS.length; i++) {
-        var ctrl = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, 45000);
-        var full = '';
-        var shown = '';
+    if (Date.now() >= F_L7_BLOCK_UNTIL) {
+        lastRetryAfter = 0;
+        /* 匿名层限制 1 次/秒，前端自己节流 */
+        var wait = 1150 - (Date.now() - F_L7_LAST);
+        if (wait > 0) await new Promise(function (r) { setTimeout(r, wait); });
+        F_L7_LAST = Date.now();
 
-        try {
-            var res = await fetch(F_API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + F_API_KEY
-                },
-                body: JSON.stringify({
-                    model: F_MODELS[i],
-                    messages: buildMessages(),
-                    stream: true,
-                    temperature: 1.05,
-                    max_tokens: 320
-                }),
-                signal: ctrl.signal
-            });
-
-            if (!res.ok) {
-                var txt = '';
-                try { txt = await res.text(); } catch (e) {}
-                lastErr = res.status + ' ' + txt.slice(0, 160);
-                throw new Error('http ' + res.status);
-            }
-
-            var reader = res.body.getReader();
-            var decoder = new TextDecoder();
-            var buf = '';
-
-            while (true) {
-                var chunk = await reader.read();
-                if (chunk.done) break;
-                buf += decoder.decode(chunk.value, { stream: true });
-
-                var idx;
-                while ((idx = buf.indexOf('\n')) >= 0) {
-                    var line = buf.slice(0, idx).trim();
-                    buf = buf.slice(idx + 1);
-                    if (!line || line.indexOf('data:') !== 0) continue;
-                    var payload = line.slice(5).trim();
-                    if (payload === '[DONE]') continue;
-                    try {
-                        var json = JSON.parse(payload);
-                        var delta = json.choices && json.choices[0] && json.choices[0].delta;
-                        if (!delta || !delta.content) continue;
-                        full += delta.content;
-                        var now = stripThink(full);
-                        if (now.trim() && now !== shown) {
-                            shown = now;
-                            if (onDelta) onDelta(now);
-                        }
-                    } catch (e) {}
+        for (var i = 0; i < F_L7_MODELS.length; i++) {
+            try {
+                var body = Object.assign({}, payload, { model: F_L7_MODELS[i] });
+                var t = await streamChat(
+                    F_L7_URL, { 'Content-Type': 'application/json' }, body, onDelta
+                );
+                return { text: t, src: 'l' };
+            } catch (e) {
+                lastE = e;
+                lastErr = String((e && (e.code || e.message)) || '');
+                if (onDelta) onDelta('');
+                if (/429/.test(lastErr)) {
+                    if (lastRetryAfter > 60) F_L7_BLOCK_UNTIL = setL7Block(lastRetryAfter);
+                    break;   // 匿名层限流，别再撞第二个模型
                 }
             }
+        }
+    }
 
-            clearTimeout(timer);
-            var clean = stripThink(full).trim();
-            if (clean) return clean;
-            lastE = new Error('empty');
-        } catch (e) {
-            clearTimeout(timer);
-            lastE = e;
-            lastErr = String((e && (e.code || e.message)) || '');
-            try { ctrl.abort(); } catch (e2) {}
+    if (F_API_KEY) {
+        for (var j = 0; j < F_MODELS.length; j++) {
+            try {
+                var body2 = Object.assign({}, payload, { model: F_MODELS[j] });
+                var t2 = await streamChat(F_API_URL, {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + F_API_KEY
+                }, body2, onDelta);
+                return { text: t2, src: 'o' };
+            } catch (e2) {
+                lastE = e2;
+                lastErr = String((e2 && (e2.code || e2.message)) || '');
+                if (onDelta) onDelta('');
+            }
         }
     }
 
@@ -2445,8 +2543,12 @@ function streamBubble() {
     b.className = 'bubble';
     b.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
 
+    var wrap = document.createElement('div');
+    wrap.className = 'bwrap';
+    wrap.appendChild(b);
+
     row.appendChild(mini);
-    row.appendChild(b);
+    row.appendChild(wrap);
     msgs.appendChild(row);
     msgs.scrollTop = msgs.scrollHeight;
 
@@ -2454,6 +2556,9 @@ function streamBubble() {
         set: function (text) {
             b.textContent = text;
             msgs.scrollTop = msgs.scrollHeight;
+        },
+        mark: function (src) {
+            if (!wrap.querySelector('.src')) wrap.appendChild(srcTag(src));
         },
         remove: function () { if (row.parentNode) row.parentNode.removeChild(row); }
     };
@@ -2494,11 +2599,12 @@ async function sendUser(text) {
     var box = streamBubble();
 
     try {
-        var full = await callModel(function (f) { box.set(f); });
-        var txt = (full || '').trim();
+        var r = await callModel(function (f) { box.set(f); });
+        var txt = (r.text || '').trim();
         if (!txt) throw new Error('empty');
         box.set(txt);
-        state.hist.push({ r: 'f', t: txt, ts: Date.now() });
+        box.mark(r.src);
+        state.hist.push({ r: 'f', t: txt, ts: Date.now(), s: r.src });
         state.last = Date.now();
         saveState();
         lastErr = '';
@@ -2606,7 +2712,7 @@ function replay() {
             sep.textContent = (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日';
             msgs.appendChild(sep);
         }
-        bubbleRow(m.r === 'u' ? 'u' : 'f', m.t);
+        bubbleRow(m.r === 'u' ? 'u' : 'f', m.t, m.s || 'f');
     });
     msgs.scrollTop = msgs.scrollHeight;
 }
@@ -2670,6 +2776,7 @@ function setUnlocked() {
 }
 
 function showApp() {
+    F_AI_READY = true;
     gate.hidden = true;
     $('app').hidden = false;
     if (!fOpened) { fOpened = true; replay(); opening(); }
@@ -2775,6 +2882,7 @@ $('btn-clear').addEventListener('click', function () {
 
 $('btn-lock').addEventListener('click', function () {
     try { localStorage.removeItem(K_GATE); } catch (e) {}
+    F_AI_READY = false;
     F_API_KEY = '';
     saveKey('');
     $('app').hidden = true;
