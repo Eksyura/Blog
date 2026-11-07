@@ -1732,7 +1732,9 @@ var GATE_DAYS = 30;
 /* 模型：WorkBuddy 云服务，免密钥，浏览器直连 */
 var F_ENDPOINT = 'https://f-chat.app.workbuddy.host';
 var F_PK = 'wbpk_DRxybxiDv2n3qz1VLxFATm_H0Gk3TTPlXtBIsqBjtnG9651bAspe5at';
-var F_MODELS = ['deepseek-v4.1-flash', 'hy4free'];
+/* 只用 0 credits 的模型：hy4free 主用（首字 3-5s），hy3 兜底（首字 6-10s）。
+   两者都不消耗额度，坏处是比 deepseek 慢几秒。 */
+var F_MODELS = ['hy4free', 'hy3'];
 
 var F_CLOUD = null;
 function fCloud() {
@@ -2314,16 +2316,30 @@ function buildMessages() {
 
 var lastErr = '';
 
+/* 免费模型都是思考模型，思考过程可能以 <think:xxx>…</think:xxx> 混在 content 里，
+   或者走 reasoning_content 字段。这里统一剥掉，只留她真正说出口的话。 */
+function stripThink(s) {
+    if (!s) return '';
+    var out = s.replace(/<think[^>]*>[\s\S]*?<\/think[^>]*>/gi, '');
+    out = out.replace(/<think[^>]*>[\s\S]*$/i, '');
+    out = out.replace(/<\/?think[^>]*>/gi, '');
+    out = out.replace(/<\/?[a-zA-Z][^<>\n]{0,80}>/g, '');
+    out = out.replace(/<[^<>\n]{0,80}$/, '');
+    return out.replace(/^[\s>]+/, '');
+}
+
 async function callModel(onDelta) {
     var cloud = fCloud();
     if (!cloud) throw new Error('sdk');
 
-    var ctrl = new AbortController();
-    var timer = setTimeout(function () { ctrl.abort(); }, 45000);
     var lastE = null;
 
     for (var i = 0; i < F_MODELS.length; i++) {
+        var ctrl = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, 40000);
         var full = '';
+        var shown = '';
+
         try {
             var stream = await cloud.llm.chat.completions.create({
                 model: F_MODELS[i],
@@ -2334,20 +2350,26 @@ async function callModel(onDelta) {
             });
             for await (var chunk of stream) {
                 var delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
-                if (delta && delta.content) {
-                    full += delta.content;
-                    if (onDelta) onDelta(full);
+                if (!delta || !delta.content) continue;
+                full += delta.content;
+                var now = stripThink(full);
+                if (now.trim() && now !== shown) {
+                    shown = now;
+                    if (onDelta) onDelta(now);
                 }
             }
             clearTimeout(timer);
-            if (full.trim()) return full;
+            var clean = stripThink(full).trim();
+            if (clean) return clean;
             lastE = new Error('empty');
         } catch (e) {
+            clearTimeout(timer);
             lastE = e;
             lastErr = String((e && (e.code || e.message)) || '');
+            try { ctrl.abort(); } catch (e2) {}
         }
     }
-    clearTimeout(timer);
+
     throw lastE || new Error('fail');
 }
 
