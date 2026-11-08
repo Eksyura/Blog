@@ -464,6 +464,10 @@
             text-align: center;
         }
 
+        .random-img-actions .download-btn[hidden] {
+            display: none;
+        }
+
         /* ---------- 响应式：窄屏全部单列 ---------- */
         @media (max-width: 900px) {
             .blog-layout {
@@ -678,10 +682,11 @@
                 </div>
                 <div class="random-img-actions">
                     <button class="download-btn" id="random-img-refresh" type="button" style="cursor:pointer;border:none;font-family:inherit;">Refresh</button>
-                    <p class="download-note" style="margin-top:12px; text-align:center;">
+                    <a class="download-btn" id="random-img-save" href="#" download="eksyura-image.png" hidden style="cursor:pointer;">Save image</a>
+                </div>
+                <p class="download-note" style="margin-top:12px; text-align:center;">
                     图片为第三方API提供，请谨慎观看。
                 </p>
-                </div>
             </div>
         </div>
 
@@ -927,53 +932,27 @@
         });
     </script>
 
-    <!-- ===== 随机图片（直接加载图片，无跨域问题） ===== -->
+    <!-- ===== 随机图片：只请求一次，本地固化，保证「显示的」＝「保存的」 ===== -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             (function () {
-                // t.alcy.cc 是图片直链服务：直接改 <img> 的 src 就能拿到图，
-                // 不需要 fetch JSON，因此也不会出现跨域（CORS）错误。
+                // t.alcy.cc/mp 每次请求都 302 到一张不同的随机图。
+                // 旧写法先发一次预加载、再给 <img> 赋同一个随机 URL，导致页面上显示的
+                // 和右键「图片另存为」取到的可能是两张不同的图。
+                // 现在：只请求这一次，用 canvas 把这张图转成本地 dataURL，
+                // <img> 与下载按钮都指向这份本地数据 —— 显示什么就保存什么。
                 var API = 'https://t.alcy.cc/mp';
 
                 var img = document.getElementById('random-img-el');
                 var status = document.getElementById('random-img-status');
                 var refreshBtn = document.getElementById('random-img-refresh');
+                var saveBtn = document.getElementById('random-img-save');
 
                 if (!img || !status || !refreshBtn) return;
 
                 var loading = false;
-
-                function loadImage() {
-                    if (loading) return;
-                    loading = true;
-                    refreshBtn.disabled = true;
-                    refreshBtn.style.opacity = '0.6';
-                    refreshBtn.style.pointerEvents = 'none';
-
-                    // 显示加载中，并隐藏旧图
-                    status.textContent = 'Loading...';
-                    status.classList.remove('error');
-                    status.hidden = false;
-                    img.hidden = true;
-
-                    // 加时间戳防止浏览器缓存（否则 refresh 可能拿到同一张）
-                    var url = API + '?_t=' + Date.now();
-
-                    var preloader = new Image();
-                    preloader.onload = function () {
-                        img.src = url;
-                        img.alt = 'Random image from t.alcy.cc';
-                        img.hidden = false;
-                        status.hidden = true;
-                    };
-                    preloader.onerror = function () {
-                        status.textContent = 'Failed to load image.';
-                        status.classList.add('error');
-                        status.hidden = false;
-                        img.hidden = true;
-                    };
-                    preloader.src = url;
-                }
+                var currentObjUrl = '';
+                var MAX_TRY = 6;   // 该图源约半数 CDN 节点不给 CORS 头，换节点重试
 
                 function done() {
                     loading = false;
@@ -982,20 +961,109 @@
                     refreshBtn.style.pointerEvents = '';
                 }
 
-                refreshBtn.addEventListener('click', function () {
-                    loadImage();
-                    // 图片 onload / onerror 之后解锁按钮
-                    var unlock = function () { done(); };
-                    img.addEventListener('load', unlock, { once: true });
-                    img.addEventListener('error', unlock, { once: true });
-                });
+                function clearObjUrl() {
+                    if (currentObjUrl) {
+                        try { URL.revokeObjectURL(currentObjUrl); } catch (e) {}
+                        currentObjUrl = '';
+                    }
+                }
+
+                function loadImage() {
+                    if (loading) return;
+                    loading = true;
+                    refreshBtn.disabled = true;
+                    refreshBtn.style.opacity = '0.6';
+                    refreshBtn.style.pointerEvents = 'none';
+
+                    status.textContent = 'Loading...';
+                    status.classList.remove('error');
+                    status.hidden = false;
+                    img.hidden = true;
+                    clearObjUrl();
+                    if (saveBtn) { saveBtn.hidden = true; saveBtn.removeAttribute('href'); }
+
+                    var tried = 0;
+
+                    function finishWith(blob) {
+                        var objUrl = URL.createObjectURL(blob);
+                        currentObjUrl = objUrl;
+                        // 页面显示、右键另存为、Save 按钮三者都指向这一份本地数据
+                        img.src = objUrl;
+                        img.alt = 'Random image from t.alcy.cc';
+                        if (saveBtn) {
+                            saveBtn.href = objUrl;
+                            saveBtn.download = 'eksyura-image-' + Date.now() + '.png';
+                            saveBtn.hidden = false;
+                        }
+                        img.hidden = false;
+                        status.hidden = true;
+                        done();
+                    }
+
+                    function fallback(url) {
+                        // CORS 全部失败：退回普通加载，至少能看图；隐藏 Save 避免存到错图
+                        var plain = new Image();
+                        plain.onload = function () {
+                            img.src = url;
+                            img.alt = 'Random image from t.alcy.cc';
+                            img.hidden = false;
+                            status.hidden = true;
+                            done();
+                        };
+                        plain.onerror = function () {
+                            status.textContent = 'Failed to load image.';
+                            status.classList.add('error');
+                            status.hidden = false;
+                            img.hidden = true;
+                            done();
+                        };
+                        plain.src = url;
+                    }
+
+                    function attempt() {
+                        tried++;
+                        // 每次换一张图/换一个 CDN 节点，且不复用缓存
+                        var url = API + '?_t=' + Date.now() + '_' + tried;
+
+                        var loader = new Image();
+                        loader.crossOrigin = 'anonymous';
+
+                        loader.onload = function () {
+                            var c = document.createElement('canvas');
+                            // 随机图源偶尔给到 6000px+ 的超大图，直接转 PNG 会有 25MB，
+                            // 右键保存会卡住。等比缩到长边 2000px，博客展示足够清晰。
+                            var w = loader.naturalWidth, h = loader.naturalHeight;
+                            var scale = Math.min(1, 2000 / Math.max(w, h));
+                            c.width = Math.max(1, Math.round(w * scale));
+                            c.height = Math.max(1, Math.round(h * scale));
+                            try {
+                                c.getContext('2d').drawImage(loader, 0, 0, c.width, c.height);
+                                c.toBlob(function (blob) {
+                                    if (blob) { finishWith(blob); }
+                                    else if (tried < MAX_TRY) { attempt(); }
+                                    else { fallback(url); }
+                                }, 'image/png');
+                            } catch (e) {
+                                if (tried < MAX_TRY) { attempt(); }
+                                else { fallback(url); }
+                            }
+                        };
+
+                        loader.onerror = function () {
+                            if (tried < MAX_TRY) { attempt(); }
+                            else { fallback(url); }
+                        };
+
+                        loader.src = url;
+                    }
+
+                    attempt();
+                }
+
+                refreshBtn.addEventListener('click', loadImage);
 
                 // 首次加载：等口令解锁后才拉取，避免验证前就发第三方请求
-                function firstLoad() {
-                    loadImage();
-                    img.addEventListener('load', done, { once: true });
-                    img.addEventListener('error', done, { once: true });
-                }
+                function firstLoad() { loadImage(); }
                 if (document.body.classList.contains('unlocked')) {
                     firstLoad();
                 } else {
